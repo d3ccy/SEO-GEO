@@ -44,51 +44,60 @@
     </div>
   </div>
 
+  {% if result.page_blocked %}
+  <div class="alert alert-warn partial-results-banner">
+    <strong>⚠ Partial results</strong> — This site's firewall (WAF) blocked access to the page HTML from the audit server.
+    The on-page checks below (title, description, H1, schema) could not be completed.
+    robots.txt and sitemap checks were still performed.<br>
+    <small>{{ result.block_reason }}</small>
+  </div>
+  {% endif %}
+
   <table class="results-table">
     <thead>
       <tr><th>Check</th><th>Value</th><th>Status</th></tr>
     </thead>
     <tbody>
-      <tr>
+      <tr {% if result.page_blocked %}class="row-blocked"{% endif %}>
         <td>Page Title</td>
-        <td>{{ result.title or '—' }}{% if result.title %} <small>({{ result.title_length }} chars)</small>{% endif %}</td>
-        <td class="status-{% if result.title and result.title_ok %}ok{% elif result.title %}warn{% else %}fail{% endif %}">
-          {% if result.title and result.title_ok %}✓ Good{% elif result.title %}⚠ Too long (aim for &lt;60){% else %}✗ Missing{% endif %}
+        <td>{% if result.page_blocked %}<em>Could not access page</em>{% else %}{{ result.title or '—' }}{% if result.title %} <small>({{ result.title_length }} chars)</small>{% endif %}{% endif %}</td>
+        <td class="status-{% if result.page_blocked %}blocked{% elif result.title and result.title_ok %}ok{% elif result.title %}warn{% else %}fail{% endif %}">
+          {% if result.page_blocked %}— Blocked{% elif result.title and result.title_ok %}✓ Good{% elif result.title %}⚠ Too long (aim for &lt;60){% else %}✗ Missing{% endif %}
         </td>
       </tr>
-      <tr>
+      <tr {% if result.page_blocked %}class="row-blocked"{% endif %}>
         <td>Meta Description</td>
-        <td>{{ result.description[:80] ~ '…' if result.description and result.description|length > 80 else result.description or '—' }}{% if result.description %} <small>({{ result.description_length }} chars)</small>{% endif %}</td>
-        <td class="status-{% if result.description and result.description_ok %}ok{% elif result.description %}warn{% else %}fail{% endif %}">
-          {% if result.description and result.description_ok %}✓ Good{% elif result.description %}⚠ Too long (aim for &lt;155){% else %}✗ Missing{% endif %}
+        <td>{% if result.page_blocked %}<em>Could not access page</em>{% else %}{{ result.description[:80] ~ '…' if result.description and result.description|length > 80 else result.description or '—' }}{% if result.description %} <small>({{ result.description_length }} chars)</small>{% endif %}{% endif %}</td>
+        <td class="status-{% if result.page_blocked %}blocked{% elif result.description and result.description_ok %}ok{% elif result.description %}warn{% else %}fail{% endif %}">
+          {% if result.page_blocked %}— Blocked{% elif result.description and result.description_ok %}✓ Good{% elif result.description %}⚠ Too long (aim for &lt;155){% else %}✗ Missing{% endif %}
         </td>
       </tr>
-      <tr>
+      <tr {% if result.page_blocked %}class="row-blocked"{% endif %}>
         <td>H1 Heading</td>
-        <td>{{ result.h1 or '—' }}</td>
-        <td class="status-{% if result.h1 %}ok{% else %}fail{% endif %}">
-          {% if result.h1 %}✓ Present{% else %}✗ Missing{% endif %}
+        <td>{% if result.page_blocked %}<em>Could not access page</em>{% else %}{{ result.h1 or '—' }}{% endif %}</td>
+        <td class="status-{% if result.page_blocked %}blocked{% elif result.h1 %}ok{% else %}fail{% endif %}">
+          {% if result.page_blocked %}— Blocked{% elif result.h1 %}✓ Present{% else %}✗ Missing{% endif %}
         </td>
       </tr>
-      <tr>
+      <tr {% if result.page_blocked %}class="row-blocked"{% endif %}>
         <td>OG Tags</td>
         <td></td>
-        <td class="status-{% if result.og_tags %}ok{% else %}warn{% endif %}">
-          {% if result.og_tags %}✓ Present{% else %}⚠ Missing{% endif %}
+        <td class="status-{% if result.page_blocked %}blocked{% elif result.og_tags %}ok{% else %}warn{% endif %}">
+          {% if result.page_blocked %}— Blocked{% elif result.og_tags %}✓ Present{% else %}⚠ Missing{% endif %}
         </td>
       </tr>
-      <tr>
+      <tr {% if result.page_blocked %}class="row-blocked"{% endif %}>
         <td>JSON-LD Schema</td>
-        <td>{{ result.jsonld_count }} block{% if result.jsonld_count != 1 %}s{% endif %}</td>
-        <td class="status-{% if result.jsonld_count > 0 %}ok{% else %}fail{% endif %}">
-          {% if result.jsonld_count > 0 %}✓ Present{% else %}✗ Missing{% endif %}
+        <td>{% if result.page_blocked %}<em>Could not access page</em>{% else %}{{ result.jsonld_count }} block{% if result.jsonld_count != 1 %}s{% endif %}{% endif %}</td>
+        <td class="status-{% if result.page_blocked %}blocked{% elif result.jsonld_count > 0 %}ok{% else %}fail{% endif %}">
+          {% if result.page_blocked %}— Blocked{% elif result.jsonld_count > 0 %}✓ Present{% else %}✗ Missing{% endif %}
         </td>
       </tr>
-      <tr>
+      <tr {% if result.page_blocked %}class="row-blocked"{% endif %}>
         <td>Load Time</td>
-        <td>{{ result.load_time }}s</td>
-        <td class="status-{% if result.load_time_ok %}ok{% else %}warn{% endif %}">
-          {% if result.load_time_ok %}✓ Fast{% else %}⚠ Slow (aim for &lt;3s){% endif %}
+        <td>{% if result.load_time is not none %}{{ result.load_time }}s{% else %}<em>Not measured</em>{% endif %}</td>
+        <td class="status-{% if result.page_blocked %}blocked{% elif result.load_time_ok %}ok{% else %}warn{% endif %}">
+          {% if result.page_blocked %}— Blocked{% elif result.load_time_ok %}✓ Fast{% else %}⚠ Slow (aim for &lt;3s){% endif %}
         </td>
       </tr>
       <tr>
