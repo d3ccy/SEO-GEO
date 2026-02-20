@@ -10,18 +10,18 @@
   <div class="form-row">
     <div class="form-group">
       <label for="name">Client name <span class="required">*</span></label>
-      <input type="text" id="name" name="name" value="{{ client.name if client else '' }}" placeholder="e.g. GCHQ" required>
+      <input type="text" id="name" name="name" value="{{ client.name if client else '' }}" placeholder="e.g. Tate Modern" required>
     </div>
     <div class="form-group">
       <label for="domain">Domain</label>
-      <input type="text" id="domain" name="domain" value="{{ client.domain if client else '' }}" placeholder="e.g. gchq.gov.uk">
+      <input type="text" id="domain" name="domain" value="{{ client.domain if client else '' }}" placeholder="e.g. tate.org.uk">
     </div>
   </div>
 
   <div class="form-row">
     <div class="form-group">
       <label for="project_name">Project name</label>
-      <input type="text" id="project_name" name="project_name" value="{{ client.project_name if client else '' }}" placeholder="e.g. Stillwater Project">
+      <input type="text" id="project_name" name="project_name" value="{{ client.project_name if client else '' }}" placeholder="e.g. Website Relaunch 2026">
     </div>
     <div class="form-group">
       <label for="cms">CMS</label>

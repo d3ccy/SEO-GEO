@@ -3,12 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}SEO-GEO Toolkit{% endblock %}</title>
+  <title>{% block title %}Numiko SEO-GEO Toolkit{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
   <nav class="nav">
-    <div class="nav-brand"><a href="{{ url_for('index') }}">SEO-GEO Toolkit</a></div>
+    <div class="nav-brand">
+      <a href="{{ url_for('index') }}" aria-label="Numiko — home">
+        <!-- Numiko wordmark SVG -->
+        <svg height="36" viewBox="0 0 31 60" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="width:auto;height:36px;display:block;fill:white;">
+          <g fill="currentColor">
+            <path d="M17.863 40.852v19.15c-2.819 0-5.102-2.305-5.102-5.126V45.98c0-2.82 2.286-5.127 5.102-5.127ZM6.38 0v19.15h5.103V5.126C11.483 2.306 9.197 0 6.381 0Zm0 25.552v14.024h5.103v-19.15c-2.819 0-5.102 2.306-5.102 5.127Zm0 24.238c2.82 0 5.103-2.306 5.103-5.127v-3.81H6.381v8.936Zm0 1.276v8.936h5.103v-3.81c0-2.82-2.286-5.126-5.102-5.126ZM5.102 34.468H0V60h5.102zM5.102 0H0v19.15h5.102zm19.139 0h-5.102v19.15h5.102zm6.378 20.426h-5.102v19.15h5.102zm0-6.384h-5.102v5.106h5.102zm0 40.853h-5.102V60h5.102zm-11.48-34.469v19.15h5.102V25.552c0-2.82-2.286-5.126-5.102-5.126m-6.38-6.402c0 2.82 2.286 5.126 5.102 5.126V0H12.76zm5.102 6.402H12.76v19.15h5.102v-19.15Zm1.278 20.426v19.15c2.819 0 5.102-2.305 5.102-5.126V45.98c0-2.82-2.286-5.127-5.102-5.127Z"/>
+          </g>
+        </svg>
+      </a>
+    </div>
     <ul class="nav-links">
       <li><a href="{{ url_for('audit') }}" {% if request.endpoint == 'audit' %}class="active"{% endif %}>GEO Audit</a></li>
       <li><a href="{{ url_for('keywords') }}" {% if request.endpoint == 'keywords' %}class="active"{% endif %}>Keywords</a></li>
