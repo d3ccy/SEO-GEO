@@ -235,6 +235,38 @@ a:hover { text-decoration: underline; }
   border-radius: 12px;
 }
 
+/* Report download section */
+.report-download-section {
+  margin-top: 28px;
+  padding: 20px 24px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+.report-download-section h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+.report-download-section p {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--color-subtle);
+}
+.report-form-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.report-form-row .form-group {
+  flex: 1;
+  min-width: 200px;
+  margin-bottom: 0;
+}
+.optional { font-weight: 400; color: var(--color-subtle); font-size: 11px; }
+
 /* Sortable table */
 .sortable { cursor: pointer; user-select: none; }
 .sortable::after { content: ' ⇅'; opacity: 0.5; font-size: 11px; }

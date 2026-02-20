@@ -13,7 +13,7 @@ from auth import requires_auth
 from client_store import load_clients, save_client, delete_client, get_client
 from services.audit_service import run_audit
 from services.keyword_service import run_keyword_research
-from services.report_service import generate_content_guide_docx
+from services.report_service import generate_content_guide_docx, generate_geo_audit_docx
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = Config.SECRET_KEY
@@ -126,6 +126,47 @@ def content_guide():
                 error = f'Failed to generate report: {e}'
 
     return render_template('content_guide.html', clients=clients, error=error)
+
+
+@app.route('/audit-report', methods=['POST'])
+@requires_auth(_get_password)
+def audit_report():
+    """Run a GEO audit and download the result as a branded DOCX report."""
+    url_value = request.form.get('url', '').strip()
+    client_name = request.form.get('client_name', '').strip()
+    project_name = request.form.get('project_name', '').strip()
+
+    if not url_value:
+        flash('Please enter a URL to generate a report.', 'error')
+        return redirect(url_for('audit'))
+
+    try:
+        audit_data = run_audit(url_value)
+    except (Exception, SystemExit) as e:
+        flash(str(e) or 'Could not fetch URL — check the address and try again.', 'error')
+        return redirect(url_for('audit'))
+
+    # Build report params from form + audit data
+    domain = audit_data.get('url', url_value).replace('https://', '').replace('http://', '').rstrip('/')
+    params = {
+        'client_name': client_name or domain,
+        'client_domain': domain,
+        'project_name': project_name,
+        'date': datetime.now().strftime('%B %Y'),
+        'logo_path': Config.AGENCY_LOGO_PATH,
+    }
+
+    slug = domain.replace('.', '-').replace('/', '-')
+    filename = f"geo-audit-{slug}-{uuid.uuid4().hex[:6]}.docx"
+    output_path = os.path.join(Config.OUTPUT_DIR, filename)
+
+    try:
+        generate_geo_audit_docx(params, audit_data, output_path)
+    except Exception as e:
+        flash(f'Failed to generate report: {e}', 'error')
+        return redirect(url_for('audit'))
+
+    return send_file(output_path, as_attachment=True, download_name=filename)
 
 
 @app.route('/download/<path:filename>')

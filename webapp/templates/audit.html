@@ -120,6 +120,28 @@
     <span class="legend-item score-amber">41–70: Needs Work</span>
     <span class="legend-item score-red">0–40: Poor</span>
   </div>
+
+  <div class="report-download-section">
+    <h3>Download Full Report</h3>
+    <p>Generate a branded Word document with full analysis, recommendations, and the Princeton GEO method guide.</p>
+    <form method="POST" action="/audit-report" id="report-form">
+      <input type="hidden" name="url" value="{{ result.url }}">
+      <div class="report-form-row">
+        <div class="form-group">
+          <label for="report-client-name">Client / Organisation name</label>
+          <input type="text" id="report-client-name" name="client_name" placeholder="e.g. Still Water Grasmere" autocomplete="organization">
+        </div>
+        <div class="form-group">
+          <label for="report-project-name">Project name <span class="optional">(optional)</span></label>
+          <input type="text" id="report-project-name" name="project_name" placeholder="e.g. Website Relaunch 2026">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-secondary" id="report-submit">
+        <span class="btn-text">⬇ Download GEO Audit Report (.docx)</span>
+        <span class="btn-loading" hidden>Generating report&hellip;</span>
+      </button>
+    </form>
+  </div>
 </div>
 {% endif %}
 {% endblock %}
