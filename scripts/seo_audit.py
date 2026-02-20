@@ -15,7 +15,11 @@ def fetch_url(url: str, timeout: int = 30) -> tuple:
     """Fetch URL and return (content, headers, load_time)"""
     try:
         start = time.time()
-        req = urllib.request.Request(url, headers={"User-Agent": "SEO-Audit/1.0"})
+        req = urllib.request.Request(url, headers={
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-GB,en;q=0.9",
+        })
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             content = resp.read().decode("utf-8", errors="ignore")
             headers = dict(resp.headers)
