@@ -15,7 +15,8 @@ def run_audit(url: str) -> dict:
 
     content, headers, load_time = fetch_url(url)
     if not content:
-        raise ValueError(f'Could not fetch URL: {url}')
+        reason = load_time if isinstance(load_time, str) else 'site may be unreachable or blocking automated requests'
+        raise ValueError(f'Could not fetch {url} — {reason}')
 
     meta = extract_meta(content)
     robots = check_robots(url)

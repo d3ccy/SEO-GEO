@@ -5,28 +5,50 @@ Usage: python3 scripts/seo_audit.py "https://example.com"
 """
 import argparse
 import urllib.request
+import urllib.error
 import urllib.parse
+import ssl
 import re
 import time
 import sys
 
 
 def fetch_url(url: str, timeout: int = 30) -> tuple:
-    """Fetch URL and return (content, headers, load_time)"""
+    """Fetch URL and return (content, headers, load_time).
+    On failure, returns (None, None, error_string) so the caller
+    can surface a meaningful error message.
+    """
     try:
         start = time.time()
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
         req = urllib.request.Request(url, headers={
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "en-GB,en;q=0.9",
+            "Accept-Encoding": "identity",
         })
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with urllib.request.urlopen(req, timeout=timeout, context=ctx) as resp:
             content = resp.read().decode("utf-8", errors="ignore")
             headers = dict(resp.headers)
             load_time = time.time() - start
             return content, headers, load_time
+    except urllib.error.HTTPError as e:
+        # Some protected sites (e.g. Cloudflare) return a 403 but still
+        # send back readable HTML — try to use it anyway.
+        try:
+            content = e.read().decode("utf-8", errors="ignore")
+            load_time = time.time() - start
+            if content and len(content) > 100:
+                return content, {}, load_time
+        except Exception:
+            pass
+        return None, None, f"HTTP {e.code} {e.reason}"
+    except urllib.error.URLError as e:
+        return None, None, f"Connection error: {e.reason}"
     except Exception as e:
-        return None, None, None
+        return None, None, str(e)
 
 
 def extract_meta(html: str) -> dict:
