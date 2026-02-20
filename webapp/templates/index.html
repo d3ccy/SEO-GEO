@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — SEO-GEO Toolkit{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>SEO-GEO Toolkit</h1>
+  <p class="subtitle">Optimise content for search engines and AI — based on Princeton GEO research</p>
+</div>
+
+<div class="card-grid">
+  <a href="{{ url_for('audit') }}" class="tool-card">
+    <div class="tool-icon">🔍</div>
+    <h2>GEO Audit</h2>
+    <p>Audit any website URL for technical SEO and GEO readiness. Checks meta tags, schema markup, load time, robots.txt, AI bot access, and sitemap. Returns a 0–100 GEO readiness score.</p>
+    <span class="card-cta">Run Audit &rarr;</span>
+  </a>
+
+  <a href="{{ url_for('keywords') }}" class="tool-card">
+    <div class="tool-icon">📊</div>
+    <h2>Keyword Research</h2>
+    <p>Research keywords using the DataForSEO API. Returns related keywords with search volumes, difficulty scores, and competition levels. Requires DataForSEO credentials.</p>
+    <span class="card-cta">Research Keywords &rarr;</span>
+  </a>
+
+  <a href="{{ url_for('content_guide') }}" class="tool-card">
+    <div class="tool-icon">📄</div>
+    <h2>Content Guide</h2>
+    <p>Generate a branded DOCX Content Writing Guide for a client. Includes the 5 GEO golden rules, CMS component toolkit, page-by-page playbook, checklist, and before/after examples.</p>
+    <span class="card-cta">Generate Guide &rarr;</span>
+  </a>
+
+  <a href="{{ url_for('clients') }}" class="tool-card">
+    <div class="tool-icon">🏢</div>
+    <h2>Client Profiles</h2>
+    <p>Save client details (name, domain, CMS, location) for quick reuse across tools. Saved profiles auto-fill forms on the Audit, Keywords, and Content Guide pages.</p>
+    <span class="card-cta">Manage Clients &rarr;</span>
+  </a>
+</div>
+
+{% if clients %}
+<div class="section">
+  <h2>Saved Clients ({{ clients|length }})</h2>
+  <div class="client-chips">
+    {% for c in clients %}
+      <span class="chip">{{ c.name }}{% if c.domain %} &mdash; {{ c.domain }}{% endif %}</span>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Clients — SEO-GEO Toolkit{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Client Profiles</h1>
+  <a href="{{ url_for('client_new') }}" class="btn btn-primary">+ New Client</a>
+</div>
+
+{% if clients %}
+<div class="clients-table-wrap">
+  <table class="results-table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Domain</th>
+        <th>Project</th>
+        <th>CMS</th>
+        <th>Notes</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in clients %}
+      <tr>
+        <td><strong>{{ c.name }}</strong></td>
+        <td>{% if c.domain %}<a href="https://{{ c.domain }}" target="_blank" rel="noopener">{{ c.domain }}</a>{% else %}—{% endif %}</td>
+        <td>{{ c.project_name or '—' }}</td>
+        <td>{{ c.cms or '—' }}</td>
+        <td>{{ c.notes or '—' }}</td>
+        <td class="actions">
+          <a href="{{ url_for('client_edit', client_id=c.id) }}" class="btn btn-sm">Edit</a>
+          <form method="POST" action="{{ url_for('client_delete', client_id=c.id) }}" class="inline-form"
+                onsubmit="return confirm('Delete {{ c.name }}?')">
+            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+  <div class="empty-state">
+    <p>No clients saved yet. <a href="{{ url_for('client_new') }}">Add your first client</a>.</p>
+  </div>
+{% endif %}
+{% endblock %}

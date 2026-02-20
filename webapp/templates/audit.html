@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}GEO Audit — SEO-GEO Toolkit{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>GEO Audit</h1>
+  <p class="subtitle">Audit a website&rsquo;s SEO and GEO readiness — no API credentials required</p>
+</div>
+
+<form method="POST" id="audit-form" class="form-card">
+  {% if clients %}
+  <div class="form-group">
+    <label for="client-select">Load client profile</label>
+    <select id="client-select" data-clients='{{ clients | tojson }}' data-target-field="url" data-domain-prefix="https://">
+      <option value="">— Select a client —</option>
+      {% for c in clients %}
+        <option value="{{ c.id }}" data-domain="{{ c.domain }}">{{ c.name }}{% if c.domain %} ({{ c.domain }}){% endif %}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  <div class="form-group">
+    <label for="url">URL to audit <span class="required">*</span></label>
+    <input type="url" id="url" name="url" value="{{ url_value }}" placeholder="https://example.com" required autocomplete="url">
+  </div>
+
+  <button type="submit" class="btn btn-primary" id="audit-submit">
+    <span class="btn-text">Run Audit</span>
+    <span class="btn-loading" hidden>Auditing&hellip;</span>
+  </button>
+</form>
+
+{% if error %}
+  <div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if result %}
+<div class="results-section">
+  <div class="results-header">
+    <h2>Results for <a href="{{ result.url }}" target="_blank" rel="noopener">{{ result.url }}</a></h2>
+    <div class="score-badge score-{% if result.score >= 71 %}green{% elif result.score >= 41 %}amber{% else %}red{% endif %}">
+      GEO Score: {{ result.score }}/100
+    </div>
+  </div>
+
+  <table class="results-table">
+    <thead>
+      <tr><th>Check</th><th>Value</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Page Title</td>
+        <td>{{ result.title or '—' }}{% if result.title %} <small>({{ result.title_length }} chars)</small>{% endif %}</td>
+        <td class="status-{% if result.title and result.title_ok %}ok{% elif result.title %}warn{% else %}fail{% endif %}">
+          {% if result.title and result.title_ok %}✓ Good{% elif result.title %}⚠ Too long (aim for &lt;60){% else %}✗ Missing{% endif %}
+        </td>
+      </tr>
+      <tr>
+        <td>Meta Description</td>
+        <td>{{ result.description[:80] ~ '…' if result.description and result.description|length > 80 else result.description or '—' }}{% if result.description %} <small>({{ result.description_length }} chars)</small>{% endif %}</td>
+        <td class="status-{% if result.description and result.description_ok %}ok{% elif result.description %}warn{% else %}fail{% endif %}">
+          {% if result.description and result.description_ok %}✓ Good{% elif result.description %}⚠ Too long (aim for &lt;155){% else %}✗ Missing{% endif %}
+        </td>
+      </tr>
+      <tr>
+        <td>H1 Heading</td>
+        <td>{{ result.h1 or '—' }}</td>
+        <td class="status-{% if result.h1 %}ok{% else %}fail{% endif %}">
+          {% if result.h1 %}✓ Present{% else %}✗ Missing{% endif %}
+        </td>
+      </tr>
+      <tr>
+        <td>OG Tags</td>
+        <td></td>
+        <td class="status-{% if result.og_tags %}ok{% else %}warn{% endif %}">
+          {% if result.og_tags %}✓ Present{% else %}⚠ Missing{% endif %}
+        </td>
+      </tr>
+      <tr>
+        <td>JSON-LD Schema</td>
+        <td>{{ result.jsonld_count }} block{% if result.jsonld_count != 1 %}s{% endif %}</td>
+        <td class="status-{% if result.jsonld_count > 0 %}ok{% else %}fail{% endif %}">
+          {% if result.jsonld_count > 0 %}✓ Present{% else %}✗ Missing{% endif %}
+        </td>
+      </tr>
+      <tr>
+        <td>Load Time</td>
+        <td>{{ result.load_time }}s</td>
+        <td class="status-{% if result.load_time_ok %}ok{% else %}warn{% endif %}">
+          {% if result.load_time_ok %}✓ Fast{% else %}⚠ Slow (aim for &lt;3s){% endif %}
+        </td>
+      </tr>
+      <tr>
+        <td>robots.txt</td>
+        <td></td>
+        <td class="status-{% if result.robots_exists %}ok{% else %}warn{% endif %}">
+          {% if result.robots_exists %}✓ Found{% else %}⚠ Not found{% endif %}
+        </td>
+      </tr>
+      <tr>
+        <td>AI Bot Access</td>
+        <td>{{ result.ai_bots | join(', ') if result.ai_bots else 'None mentioned' }}</td>
+        <td class="status-{% if result.ai_bots %}ok{% else %}fail{% endif %}">
+          {% if result.ai_bots %}✓ Mentioned{% else %}✗ Not mentioned in robots.txt{% endif %}
+        </td>
+      </tr>
+      <tr>
+        <td>Sitemap</td>
+        <td></td>
+        <td class="status-{% if result.has_sitemap %}ok{% else %}warn{% endif %}">
+          {% if result.has_sitemap %}✓ Found at /sitemap.xml{% else %}⚠ Not found{% endif %}
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="score-legend">
+    <span class="legend-item score-green">71–100: GEO Ready</span>
+    <span class="legend-item score-amber">41–70: Needs Work</span>
+    <span class="legend-item score-red">0–40: Poor</span>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Keyword Research — SEO-GEO Toolkit{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Keyword Research</h1>
+  <p class="subtitle">Research keywords using DataForSEO &mdash; requires API credentials</p>
+</div>
+
+<form method="POST" id="keywords-form" class="form-card">
+  {% if clients %}
+  <div class="form-group">
+    <label for="client-select">Load client profile</label>
+    <select id="client-select" data-clients='{{ clients | tojson }}' data-target-field="keyword">
+      <option value="">— Select a client —</option>
+      {% for c in clients %}
+        <option value="{{ c.id }}" data-domain="{{ c.domain }}" data-location="{{ c.location_code }}">{{ c.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  <div class="form-group">
+    <label for="keyword">Seed keyword <span class="required">*</span></label>
+    <input type="text" id="keyword" name="keyword" value="{{ form.get('keyword', '') }}" placeholder="e.g. cyber security" required>
+  </div>
+
+  <div class="form-row">
+    <div class="form-group">
+      <label for="location">Location</label>
+      <select id="location" name="location">
+        <option value="2826" {% if form.get('location', '2826') == '2826' %}selected{% endif %}>🇬🇧 United Kingdom</option>
+        <option value="2840" {% if form.get('location') == '2840' %}selected{% endif %}>🇺🇸 United States</option>
+        <option value="2124" {% if form.get('location') == '2124' %}selected{% endif %}>🇨🇦 Canada</option>
+        <option value="2036" {% if form.get('location') == '2036' %}selected{% endif %}>🇦🇺 Australia</option>
+        <option value="2276" {% if form.get('location') == '2276' %}selected{% endif %}>🇩🇪 Germany</option>
+        <option value="2250" {% if form.get('location') == '2250' %}selected{% endif %}>🇫🇷 France</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="limit">Results</label>
+      <select id="limit" name="limit">
+        <option value="10" {% if form.get('limit', '20') == '10' %}selected{% endif %}>10</option>
+        <option value="20" {% if form.get('limit', '20') in ('20', '') %}selected{% endif %}>20</option>
+        <option value="50" {% if form.get('limit') == '50' %}selected{% endif %}>50</option>
+      </select>
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn-primary" id="keywords-submit">
+    <span class="btn-text">Research Keywords</span>
+    <span class="btn-loading" hidden>Fetching&hellip;</span>
+  </button>
+</form>
+
+{% if error %}
+  <div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if result %}
+<div class="results-section">
+  <div class="results-header">
+    <h2>Results for &ldquo;{{ result.seed_keyword }}&rdquo;</h2>
+    <span class="results-count">{{ result.count }} keyword{% if result.count != 1 %}s{% endif %}</span>
+  </div>
+
+  {% if result.keywords %}
+  <table class="results-table sortable-table" id="keywords-table">
+    <thead>
+      <tr>
+        <th class="sortable" data-col="0">Keyword</th>
+        <th class="sortable" data-col="1" data-type="number">Volume</th>
+        <th class="sortable" data-col="2" data-type="number">Difficulty</th>
+        <th>Competition</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for kw in result.keywords %}
+      <tr>
+        <td>{{ kw.keyword }}</td>
+        <td data-sort="{{ kw.volume_raw }}">{{ kw.volume }}</td>
+        <td>{{ kw.difficulty }}</td>
+        <td>{{ kw.competition }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty-state">No keywords found for this seed keyword.</p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

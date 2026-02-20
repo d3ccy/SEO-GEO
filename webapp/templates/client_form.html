@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}{% if action == 'edit' %}Edit{% else %}New{% endif %} Client — SEO-GEO Toolkit{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>{% if action == 'edit' %}Edit Client{% else %}New Client{% endif %}</h1>
+</div>
+
+<form method="POST" class="form-card">
+  <div class="form-row">
+    <div class="form-group">
+      <label for="name">Client name <span class="required">*</span></label>
+      <input type="text" id="name" name="name" value="{{ client.name if client else '' }}" placeholder="e.g. GCHQ" required>
+    </div>
+    <div class="form-group">
+      <label for="domain">Domain</label>
+      <input type="text" id="domain" name="domain" value="{{ client.domain if client else '' }}" placeholder="e.g. gchq.gov.uk">
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="form-group">
+      <label for="project_name">Project name</label>
+      <input type="text" id="project_name" name="project_name" value="{{ client.project_name if client else '' }}" placeholder="e.g. Stillwater Project">
+    </div>
+    <div class="form-group">
+      <label for="cms">CMS</label>
+      <select id="cms" name="cms">
+        {% set cms_val = client.cms if client else '' %}
+        <option value="">— Select —</option>
+        <option value="Drupal" {% if cms_val == 'Drupal' %}selected{% endif %}>Drupal</option>
+        <option value="WordPress" {% if cms_val == 'WordPress' %}selected{% endif %}>WordPress</option>
+        <option value="Contentful" {% if cms_val == 'Contentful' %}selected{% endif %}>Contentful</option>
+        <option value="Sitecore" {% if cms_val == 'Sitecore' %}selected{% endif %}>Sitecore</option>
+        <option value="Other" {% if cms_val == 'Other' %}selected{% endif %}>Other</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label for="location_code">DataForSEO location code</label>
+    <select id="location_code" name="location_code">
+      {% set loc = client.location_code|string if client else '2826' %}
+      <option value="2826" {% if loc == '2826' %}selected{% endif %}>🇬🇧 United Kingdom (2826)</option>
+      <option value="2840" {% if loc == '2840' %}selected{% endif %}>🇺🇸 United States (2840)</option>
+      <option value="2124" {% if loc == '2124' %}selected{% endif %}>🇨🇦 Canada (2124)</option>
+      <option value="2036" {% if loc == '2036' %}selected{% endif %}>🇦🇺 Australia (2036)</option>
+      <option value="2276" {% if loc == '2276' %}selected{% endif %}>🇩🇪 Germany (2276)</option>
+      <option value="2250" {% if loc == '2250' %}selected{% endif %}>🇫🇷 France (2250)</option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="notes">Notes</label>
+    <textarea id="notes" name="notes" rows="3" placeholder="Internal notes about this client...">{{ client.notes if client else '' }}</textarea>
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">{% if action == 'edit' %}Save Changes{% else %}Create Client{% endif %}</button>
+    <a href="{{ url_for('clients') }}" class="btn btn-secondary">Cancel</a>
+  </div>
+</form>
+{% endblock %}

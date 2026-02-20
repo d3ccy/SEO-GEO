@@ -1,0 +1,31 @@
+# Environment
+.env
+*.env
+
+# Claude Code settings (may contain API credentials — never commit)
+.claude/
+
+# Generated reports
+/tmp/
+webapp/uploads/*
+!webapp/uploads/.gitkeep
+
+# Client data (back this up separately)
+webapp/data/clients.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.Python
+*.egg-info/
+dist/
+build/
+
+# macOS
+.DS_Store
+__MACOSX/
+
+# Output files (generated, not source)
+*.docx
+*.pdf

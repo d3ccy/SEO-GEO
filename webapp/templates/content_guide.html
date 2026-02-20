@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Content Guide — SEO-GEO Toolkit{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Generate Content Guide</h1>
+  <p class="subtitle">Create a branded DOCX content writing guide for a client</p>
+</div>
+
+<form method="POST" enctype="multipart/form-data" id="content-guide-form" class="form-card">
+  {% if clients %}
+  <div class="form-group">
+    <label for="client-select">Load client profile</label>
+    <select id="client-select" data-clients='{{ clients | tojson }}'>
+      <option value="">— Select a client (auto-fills fields below) —</option>
+      {% for c in clients %}
+        <option value="{{ c.id }}"
+          data-name="{{ c.name }}"
+          data-domain="{{ c.domain }}"
+          data-project="{{ c.project_name }}"
+          data-cms="{{ c.cms }}">{{ c.name }}{% if c.domain %} ({{ c.domain }}){% endif %}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <hr class="form-divider">
+  {% endif %}
+
+  <div class="form-row">
+    <div class="form-group">
+      <label for="client_name">Client name <span class="required">*</span></label>
+      <input type="text" id="client_name" name="client_name" placeholder="e.g. GCHQ" required>
+    </div>
+    <div class="form-group">
+      <label for="client_domain">Client domain</label>
+      <input type="text" id="client_domain" name="client_domain" placeholder="e.g. gchq.gov.uk">
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="form-group">
+      <label for="project_name">Project name</label>
+      <input type="text" id="project_name" name="project_name" placeholder="e.g. Stillwater Project">
+    </div>
+    <div class="form-group">
+      <label for="date">Date</label>
+      <input type="text" id="date" name="date" placeholder="e.g. February 2026">
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label for="cms">CMS</label>
+    <select id="cms" name="cms">
+      <option value="Drupal">Drupal</option>
+      <option value="WordPress">WordPress</option>
+      <option value="Contentful">Contentful</option>
+      <option value="Sitecore">Sitecore</option>
+      <option value="Other">Other</option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="client_logo">Client logo <small>(optional &mdash; PNG/JPG, max 2MB; defaults to agency logo)</small></label>
+    <input type="file" id="client_logo" name="client_logo" accept=".png,.jpg,.jpeg,.gif,.webp">
+  </div>
+
+  <button type="submit" class="btn btn-primary btn-large" id="guide-submit">
+    <span class="btn-text">Generate Content Guide DOCX</span>
+    <span class="btn-loading" hidden>Generating&hellip; (this may take a few seconds)</span>
+  </button>
+</form>
+
+{% if error %}
+  <div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="info-box">
+  <h3>What&rsquo;s included in the Content Guide?</h3>
+  <ol>
+    <li><strong>Why This Matters</strong> &mdash; GEO explained, AI engine behaviour, the opportunity</li>
+    <li><strong>The 5 Golden Rules</strong> &mdash; Princeton research methods with percentage boosts</li>
+    <li><strong>CMS Content Toolkit</strong> &mdash; Component-by-component guidance (FAQ, Quote, Statistics, Key Fact, Rich Text)</li>
+    <li><strong>Page-by-Page Playbook</strong> &mdash; Checklists for About, News, and Career page types</li>
+    <li><strong>SEO &amp; GEO Checklist</strong> &mdash; 20-item quality checklist</li>
+    <li><strong>Before &amp; After Examples</strong> &mdash; Weak vs. GEO-optimised content</li>
+    <li><strong>Quick Reference Card</strong> &mdash; Print-ready cheat sheet</li>
+  </ol>
+</div>
+{% endblock %}
