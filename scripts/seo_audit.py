@@ -11,6 +11,7 @@ import ssl
 import re
 import time
 import sys
+import html as html_module
 
 
 # ---------------------------------------------------------------------------
@@ -243,14 +244,14 @@ def extract_meta(html):
     result = {}
 
     title_match = re.search(r"<title[^>]*>([^<]+)</title>", html, re.I)
-    result["title"] = title_match.group(1).strip() if title_match else None
+    result["title"] = html_module.unescape(title_match.group(1).strip()) if title_match else None
 
     desc_match = re.search(
         r'<meta[^>]+name=["\']description["\'][^>]+content=["\']([^"\']+)["\']', html, re.I)
     if not desc_match:
         desc_match = re.search(
             r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']description["\']', html, re.I)
-    result["description"] = desc_match.group(1).strip() if desc_match else None
+    result["description"] = html_module.unescape(desc_match.group(1).strip()) if desc_match else None
 
     og_match = re.search(r'<meta[^>]+property=["\']og:title["\']', html, re.I)
     result["og_tags"] = bool(og_match)
@@ -262,7 +263,7 @@ def extract_meta(html):
     if h1_match:
         h1_text = re.sub(r"<[^>]+>", " ", h1_match.group(1))
         h1_text = re.sub(r"\s+", " ", h1_text).strip()
-        result["h1"] = h1_text[:100]
+        result["h1"] = html_module.unescape(h1_text)[:100]
     else:
         result["h1"] = None
 
