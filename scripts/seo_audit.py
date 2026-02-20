@@ -13,6 +13,26 @@ import time
 import sys
 
 
+def _is_bot_challenge(content: str, headers: dict) -> bool:
+    """Detect Cloudflare and other bot-challenge interstitial pages."""
+    # Cloudflare challenge page signatures
+    cf_signatures = [
+        'just a moment',           # Title of CF JS challenge
+        'cf-mitigated',            # Response header (checked separately)
+        'challenges.cloudflare.com',
+        'cf_chl_opt',              # JS variable in CF challenge
+        'Ray ID',                  # Cloudflare Ray ID in error pages
+    ]
+    content_lower = content.lower()
+    for sig in cf_signatures:
+        if sig.lower() in content_lower:
+            return True
+    # Check headers for Cloudflare challenge indicator
+    if headers.get('cf-mitigated') == 'challenge':
+        return True
+    return False
+
+
 def fetch_url(url: str, timeout: int = 30) -> tuple:
     """Fetch URL and return (content, headers, load_time).
     On failure, returns (None, None, error_string) so the caller
@@ -33,14 +53,15 @@ def fetch_url(url: str, timeout: int = 30) -> tuple:
             content = resp.read().decode("utf-8", errors="ignore")
             headers = dict(resp.headers)
             load_time = time.time() - start
+            if _is_bot_challenge(content, headers):
+                return None, None, "Cloudflare bot protection is blocking access to this site. The site owner may need to allowlist the audit tool's IP, or try auditing from a different network."
             return content, headers, load_time
     except urllib.error.HTTPError as e:
-        # Some protected sites (e.g. Cloudflare) return a 403 but still
-        # send back readable HTML — try to use it anyway.
+        # Some protected sites return a 403 but still send readable HTML.
         try:
             content = e.read().decode("utf-8", errors="ignore")
             load_time = time.time() - start
-            if content and len(content) > 100:
+            if content and len(content) > 100 and not _is_bot_challenge(content, {}):
                 return content, {}, load_time
         except Exception:
             pass
