@@ -7,6 +7,8 @@
   <a href="{{ url_for('client_new') }}" class="btn btn-primary">+ New Client</a>
 </div>
 
+{% include 'partials/how_to_clients.html' %}
+
 {% if clients %}
 <div class="clients-table-wrap">
   <table class="results-table">

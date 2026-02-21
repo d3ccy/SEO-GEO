@@ -1,0 +1,55 @@
+<details class="how-to" id="how-to-clients">
+  <summary class="how-to-summary">
+    How to use this tool
+    <span class="how-to-chevron">&#9660;</span>
+  </summary>
+  <div class="how-to-body">
+
+    <div class="how-to-section how-to-full">
+      <h4>How to use</h4>
+      <p>Click <strong>+ New Client</strong> to create a profile. Fill in the <strong>Name</strong> (required), domain (without <code>https://</code>), project name, CMS, location, and any internal notes.</p>
+      <p>Once saved, the client appears in a dropdown on every tool page. Selecting a client auto-fills the form fields — saving time across all five tools. The more complete the profile, the more fields are auto-filled.</p>
+      <p>Use the <strong>Edit</strong> and <strong>Delete</strong> actions in the table to manage existing profiles.</p>
+    </div>
+
+    <div class="how-to-section">
+      <h4>What auto-fills where</h4>
+      <dl>
+        <dt>GEO Audit</dt>
+        <dd>URL field → client domain (prefixed with <code>https://</code>)</dd>
+        <dt>Keyword Research</dt>
+        <dd>Seed keyword → domain, Location → client location</dd>
+        <dt>AI Visibility</dt>
+        <dd>Domain field → domain, Brand query → client name</dd>
+        <dt>Domain Overview</dt>
+        <dd>Domain field → domain, Location → client location</dd>
+        <dt>Content Guide</dt>
+        <dd>All fields: name, domain, project name, CMS</dd>
+      </dl>
+    </div>
+
+    <div class="how-to-section">
+      <h4>Quick tips</h4>
+      <ul class="how-to-tips">
+        <li>Always save a client profile before starting a project — it saves time across all five tools</li>
+        <li>The <strong>Notes</strong> field is for internal context (e.g. "Client uses Acquia hosting, check with Jon before Cloudflare changes")</li>
+        <li><strong>Location</strong> defaults to United Kingdom (2826). Change this for clients with non-UK target audiences</li>
+        <li>All team members share the same client list — this is intentional for a shared team tool</li>
+        <li>Delete old profiles after projects conclude to keep the list manageable</li>
+      </ul>
+    </div>
+
+    <div class="how-to-section how-to-full">
+      <h4>Common questions</h4>
+      <dl>
+        <dt>Will my clients be visible to other users of the app?</dt>
+        <dd>Yes. All users of the same app instance share one client list — the same way a shared spreadsheet would work.</dd>
+        <dt>I lost my client profiles after a redeploy — why?</dt>
+        <dd>Client profiles are stored in <code>webapp/data/clients.json</code>, which is not persisted between Railway free-tier redeploys. Ask the developer about adding a Railway Volume for persistent storage.</dd>
+        <dt>Can I export the client list?</dt>
+        <dd>Not from the UI currently. Ask the developer for a copy of <code>clients.json</code> — it's plain JSON readable in any text editor or importable into a spreadsheet.</dd>
+      </dl>
+    </div>
+
+  </div>
+</details>

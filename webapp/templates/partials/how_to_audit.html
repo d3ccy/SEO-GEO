@@ -1,0 +1,65 @@
+<details class="how-to" id="how-to-audit">
+  <summary class="how-to-summary">
+    How to use this tool
+    <span class="how-to-chevron">&#9660;</span>
+  </summary>
+  <div class="how-to-body">
+
+    <div class="how-to-section how-to-full">
+      <h4>How to use</h4>
+      <p>Enter any URL (with or without <code>https://</code>) and click <strong>Run Audit</strong>. No API key required — this tool fetches the page directly.</p>
+      <p>Optionally, select a <strong>Client Profile</strong> to auto-fill the URL field from saved details.</p>
+      <p>Once results appear, fill in the client name and click <strong>Download GEO Audit Report</strong> to generate a branded DOCX report you can share directly with clients.</p>
+    </div>
+
+    <div class="how-to-section">
+      <h4>Understanding the score</h4>
+      <p>The <strong>0–100 GEO Readiness Score</strong> measures how well a page is optimised for AI citation engines:</p>
+      <ul class="how-to-tips">
+        <li><span style="color:#16a34a">●</span> <strong>71–100</strong> — GEO Ready</li>
+        <li><span style="color:#d97706">●</span> <strong>41–70</strong> — Needs Work</li>
+        <li><span style="color:#dc2626">●</span> <strong>0–40</strong> — Poor</li>
+      </ul>
+      <p style="margin-top:8px">The highest-value checks are <strong>JSON-LD Schema</strong> (+20pts) and <strong>AI Bot Access</strong> (+15pts). Fix these first.</p>
+    </div>
+
+    <div class="how-to-section">
+      <h4>What each check means</h4>
+      <dl>
+        <dt>Page Title / Meta Description</dt>
+        <dd>"Too long" means the text exceeds 60/155 characters — AI engines may truncate it.</dd>
+        <dt>JSON-LD Schema</dt>
+        <dd>Structured data markup that tells AI engines what your content is about. Zero schemas = the biggest single gap.</dd>
+        <dt>AI Bot Access</dt>
+        <dd>Only scores if bots are <em>explicitly</em> allowed with <code>Allow: /</code> in robots.txt. "Not configured" is not the same as allowed.</dd>
+        <dt>Partial results banner</dt>
+        <dd>The site's WAF (e.g. Cloudflare) blocked the page. robots.txt and sitemap checks still ran.</dd>
+        <dt>Domain Authority panel</dt>
+        <dd>Backlinks data — shown for context only. Does <em>not</em> affect the score.</dd>
+      </dl>
+    </div>
+
+    <div class="how-to-section">
+      <h4>Quick tips</h4>
+      <ul class="how-to-tips">
+        <li>Audit before and after GEO changes to track improvement</li>
+        <li>If you see "Partial results — WAF blocked", ask the client to whitelist <code>NumikoAuditBot/1.0</code> in their Cloudflare settings</li>
+        <li>Run on the homepage <em>and</em> 2–3 key service pages — scores often vary significantly</li>
+        <li>The DOCX report includes the full Princeton GEO methods reference — use it as a client deliverable</li>
+      </ul>
+    </div>
+
+    <div class="how-to-section how-to-full">
+      <h4>Common questions</h4>
+      <dl>
+        <dt>Why is the score 0 even though the site has content?</dt>
+        <dd>The score only counts technical signals: title, description, schema, robots.txt, sitemap, and load time. Good prose does not affect the score.</dd>
+        <dt>The site loads in my browser but shows "Partial results" — why?</dt>
+        <dd>The audit server has a different IP from your browser. Some Cloudflare WAF rules block all server-side requests. Ask the client to allowlist the NumikoAuditBot user-agent.</dd>
+        <dt>Does the score include backlinks?</dt>
+        <dd>No. Backlinks are displayed for context but do not contribute to the 0–100 score.</dd>
+      </dl>
+    </div>
+
+  </div>
+</details>

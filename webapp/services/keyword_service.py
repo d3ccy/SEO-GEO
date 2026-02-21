@@ -91,7 +91,7 @@ def run_keyword_research(keyword: str, location_code: int = 2826, limit: int = 2
 
     # ── AI search volume ──────────────────────────────────────────────────────
     try:
-        ai_resp = api_post('ai_optimization/ai_keyword_data/live', [{
+        ai_resp = api_post('ai_optimization/ai_keyword_data/keywords_search_volume/live', [{
             'keywords': kw_list,
             'location_code': location_code,
             'language_code': 'en',
