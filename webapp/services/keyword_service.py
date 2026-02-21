@@ -23,14 +23,15 @@ def run_keyword_research(keyword: str, location_code: int = 2826, limit: int = 2
 
     keywords = []
     if results:
-        items = results[0].get('items', []) if results else []
-        for item in items[:limit]:
+        # The keywords_for_keywords endpoint returns a flat list of keyword
+        # objects directly in `result` — not nested under an `items` key.
+        for item in results[:limit]:
             keywords.append({
                 'keyword': item.get('keyword', ''),
                 'volume': format_count(item.get('search_volume', 0)),
                 'volume_raw': item.get('search_volume', 0) or 0,
                 'difficulty': item.get('keyword_difficulty', 'N/A'),
-                'competition': item.get('competition_level', 'N/A'),
+                'competition': item.get('competition', 'N/A'),
             })
 
     return {
