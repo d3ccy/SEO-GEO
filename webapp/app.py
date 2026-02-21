@@ -13,6 +13,8 @@ from auth import requires_auth
 from client_store import load_clients, save_client, delete_client, get_client
 from services.audit_service import run_audit
 from services.keyword_service import run_keyword_research
+from services.ai_visibility_service import run_ai_visibility
+from services.domain_service import run_domain_overview
 from services.report_service import generate_content_guide_docx, generate_geo_audit_docx
 
 app = Flask(__name__)
@@ -244,6 +246,105 @@ def client_delete(client_id):
     delete_client(client_id)
     flash(f'Client \u201c{name}\u201d deleted.')
     return redirect(url_for('clients'))
+
+
+@app.route('/ai-visibility', methods=['GET', 'POST'])
+@requires_auth(_get_password)
+def ai_visibility():
+    clients = load_clients()
+    result = None
+    error = None
+    form = {}
+    if request.method == 'POST':
+        form = {
+            'domain': request.form.get('domain', '').strip(),
+            'brand_query': request.form.get('brand_query', '').strip(),
+        }
+        if not Config.DATAFORSEO_LOGIN or not Config.DATAFORSEO_PASSWORD:
+            error = 'DataForSEO credentials are not configured.'
+        elif form['domain']:
+            brand_query = form['brand_query'] or form['domain']
+            try:
+                result = run_ai_visibility(
+                    form['domain'],
+                    brand_query=brand_query,
+                )
+            except (Exception, SystemExit) as e:
+                error = str(e) or 'AI Visibility check failed.'
+        else:
+            error = 'Please enter a domain.'
+    return render_template('ai_visibility.html', result=result, error=error,
+                           clients=clients, form=form)
+
+
+@app.route('/domain', methods=['GET', 'POST'])
+@requires_auth(_get_password)
+def domain():
+    clients = load_clients()
+    result = None
+    error = None
+    form = {}
+    if request.method == 'POST':
+        form = {
+            'domain': request.form.get('domain', '').strip(),
+            'location': request.form.get('location', '2826'),
+        }
+        if not Config.DATAFORSEO_LOGIN or not Config.DATAFORSEO_PASSWORD:
+            error = 'DataForSEO credentials are not configured.'
+        elif form['domain']:
+            try:
+                result = run_domain_overview(
+                    form['domain'],
+                    location_code=int(form['location']),
+                )
+            except (Exception, SystemExit) as e:
+                error = str(e) or 'Domain overview failed.'
+        else:
+            error = 'Please enter a domain.'
+    return render_template('domain.html', result=result, error=error,
+                           clients=clients, form=form)
+
+
+@app.route('/keywords/export')
+@requires_auth(_get_password)
+def keywords_export():
+    """Export keyword research as CSV."""
+    keyword = request.args.get('keyword', '').strip()
+    location = request.args.get('location', '2826')
+    if not keyword:
+        return 'No keyword specified.', 400
+    if not Config.DATAFORSEO_LOGIN or not Config.DATAFORSEO_PASSWORD:
+        return 'DataForSEO credentials not configured.', 503
+
+    try:
+        data = run_keyword_research(keyword, location_code=int(location), limit=50)
+    except Exception as e:
+        return str(e), 500
+
+    from flask import Response
+    import io
+    import csv
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['Keyword', 'Volume', 'Difficulty', 'CPC', 'Intent', 'AI Volume', 'Competition'])
+    for kw in data.get('keywords', []):
+        writer.writerow([
+            kw.get('keyword', ''),
+            kw.get('volume_raw', ''),
+            kw.get('difficulty', ''),
+            kw.get('cpc', ''),
+            kw.get('intent', ''),
+            kw.get('ai_volume_raw', ''),
+            kw.get('competition', ''),
+        ])
+
+    safe_keyword = keyword.replace(' ', '-').replace('/', '-')[:40]
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename=keywords-{safe_keyword}.csv'},
+    )
 
 
 @app.route('/health')

@@ -109,16 +109,25 @@
       </tr>
       <tr>
         <td>AI Bot Access</td>
-        <td>{{ result.ai_bots | join(', ') if result.ai_bots else 'None mentioned' }}</td>
-        <td class="status-{% if result.ai_bots %}ok{% else %}fail{% endif %}">
-          {% if result.ai_bots %}✓ Mentioned{% else %}✗ Not mentioned in robots.txt{% endif %}
+        <td>
+          {% if result.ai_bots %}
+            <span class="text-ok">✓ Allowed: {{ result.ai_bots | join(', ') }}</span>
+            {% if result.ai_bots_blocked %}<br><small class="text-warn">⚠ Blocked: {{ result.ai_bots_blocked | join(', ') }}</small>{% endif %}
+          {% elif result.ai_bots_blocked %}
+            <span class="text-warn">⚠ Blocked: {{ result.ai_bots_blocked | join(', ') }}</span>
+          {% else %}None explicitly configured{% endif %}
+        </td>
+        <td class="status-{% if result.ai_bots %}ok{% elif result.ai_bots_blocked %}warn{% else %}fail{% endif %}">
+          {% if result.ai_bots %}✓ Allowed ({{ result.ai_bots | length }})
+          {% elif result.ai_bots_blocked %}⚠ Blocked in robots.txt
+          {% else %}✗ Not configured{% endif %}
         </td>
       </tr>
       <tr>
         <td>Sitemap</td>
-        <td></td>
+        <td>{% if result.sitemap_url %}<small>{{ result.sitemap_url }}</small>{% endif %}</td>
         <td class="status-{% if result.has_sitemap %}ok{% else %}warn{% endif %}">
-          {% if result.has_sitemap %}✓ Found at /sitemap.xml{% else %}⚠ Not found{% endif %}
+          {% if result.has_sitemap %}✓ Found{% else %}⚠ Not found{% endif %}
         </td>
       </tr>
     </tbody>
@@ -129,6 +138,32 @@
     <span class="legend-item score-amber">41–70: Needs Work</span>
     <span class="legend-item score-red">0–40: Poor</span>
   </div>
+
+  {% if result.backlinks_rank or result.referring_domains or result.total_backlinks %}
+  <div class="metric-cards-section">
+    <h3 class="metric-cards-title">Domain Authority</h3>
+    <div class="metric-cards">
+      {% if result.backlinks_rank is not none %}
+      <div class="metric-card">
+        <div class="metric-value">{{ result.backlinks_rank }}</div>
+        <div class="metric-label">Domain Rank</div>
+      </div>
+      {% endif %}
+      {% if result.referring_domains is not none %}
+      <div class="metric-card">
+        <div class="metric-value">{{ "{:,}".format(result.referring_domains) }}</div>
+        <div class="metric-label">Referring Domains</div>
+      </div>
+      {% endif %}
+      {% if result.total_backlinks is not none %}
+      <div class="metric-card">
+        <div class="metric-value">{{ "{:,}".format(result.total_backlinks) }}</div>
+        <div class="metric-label">Total Backlinks</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
 
   <div class="report-download-section">
     <h3>Download Full Report</h3>

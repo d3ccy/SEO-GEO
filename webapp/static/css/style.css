@@ -363,9 +363,159 @@ a:hover { text-decoration: underline; }
 /* Empty state */
 .empty-state { color: var(--color-muted); font-size: 14px; padding: 24px 0; }
 
+/* ── Intent chips ── */
+.intent-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+.intent-informational  { background: #EFF6FF; color: #1D4ED8; }
+.intent-navigational   { background: #F3E8FF; color: #7C3AED; }
+.intent-commercial     { background: #FFF8E6; color: #B47A00; }
+.intent-transactional  { background: #EBFAF0; color: #167832; }
+.intent-positive       { background: #EBFAF0; color: #167832; }
+.intent-neutral        { background: #F1F5F9; color: #475569; }
+.intent-negative       { background: #FFF0F0; color: #B42828; }
+
+/* ── Metric cards ── */
+.metric-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+.metric-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-mid);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  min-width: 120px;
+  text-align: center;
+  flex: 1;
+}
+.metric-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-ink);
+  line-height: 1.2;
+}
+.metric-label {
+  font-size: 11px;
+  color: var(--color-muted);
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.metric-sub {
+  margin-top: 6px;
+}
+.metric-cards-section {
+  margin-top: 20px;
+  padding: 18px 20px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-mid);
+  border-radius: var(--radius);
+}
+.metric-cards-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 10px;
+}
+
+/* ── Tabs (multi-LLM) ── */
+.tab-nav {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  border-bottom: 2px solid var(--color-border-mid);
+  margin-bottom: 16px;
+}
+.tab-btn {
+  padding: 7px 16px;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 5px 5px 0 0;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'ModernEra', Arial, sans-serif;
+  cursor: pointer;
+  color: var(--color-muted);
+  transition: background 0.12s, color 0.12s;
+  position: relative;
+  bottom: -2px;
+}
+.tab-btn:hover { background: var(--color-bg); color: var(--color-ink); }
+.tab-btn.active {
+  background: var(--color-surface);
+  color: var(--color-orange);
+  border-color: var(--color-border-mid);
+  border-bottom-color: var(--color-surface);
+}
+.tab-badge {
+  display: inline-block;
+  margin-left: 5px;
+  font-size: 10px;
+  vertical-align: middle;
+}
+.tab-badge-ok { color: var(--color-ok); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ── LLM answer box ── */
+.llm-answer-box {
+  background: #FAFAFA;
+  border: 1px solid var(--color-border-mid);
+  border-left: 3px solid var(--color-orange);
+  border-radius: 5px;
+  padding: 16px 18px;
+  margin-top: 10px;
+}
+.llm-answer-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+.llm-answer-text {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--color-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ── Source list ── */
+.source-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.source-list li {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 13px;
+}
+.source-list li:last-child { border-bottom: none; }
+
+/* ── Utility text colours ── */
+.text-ok   { color: var(--color-ok);   }
+.text-warn { color: var(--color-warn); }
+.text-muted { color: var(--color-muted); }
+
 /* Responsive */
 @media (max-width: 600px) {
   .form-row { grid-template-columns: 1fr; }
   .nav-links { display: none; }
   .container { padding: 20px 16px; }
+  .metric-card { min-width: 90px; }
 }

@@ -271,29 +271,115 @@ def extract_meta(html):
 
 
 def check_robots(url):
-    """Check robots.txt"""
+    """Check robots.txt. Returns allowed and blocked AI bots separately."""
     parsed = urllib.parse.urlparse(url)
     robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
     content, _, _ = fetch_url(robots_url)
 
-    result = {"exists": False, "ai_bots": []}
-    if content:
-        result["exists"] = True
-        ai_bots = ["GPTBot", "PerplexityBot", "ClaudeBot", "anthropic-ai", "ChatGPT-User"]
-        for bot in ai_bots:
-            if bot.lower() in content.lower():
+    result = {"exists": False, "ai_bots": [], "ai_bots_blocked": [], "content": None}
+    if not content:
+        return result
+
+    result["exists"] = True
+    result["content"] = content
+
+    ai_bots = ["GPTBot", "PerplexityBot", "ClaudeBot", "anthropic-ai", "ChatGPT-User"]
+
+    # Parse robots.txt line by line to determine Allow/Disallow per bot
+    # Track which bots are currently "active" (matched by User-agent:)
+    active_bots = []   # bots matched in current User-agent block
+    bot_rules = {}     # bot -> list of ('allow'|'disallow', path)
+
+    for line in content.splitlines():
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+
+        lower = line.lower()
+
+        if lower.startswith('user-agent:'):
+            agent = line.split(':', 1)[1].strip()
+            # Check if this matches any of our AI bots
+            if agent == '*':
+                active_bots = ['*']
+            else:
+                active_bots = []
+                for bot in ai_bots:
+                    if bot.lower() == agent.lower():
+                        active_bots.append(bot)
+                        if bot not in bot_rules:
+                            bot_rules[bot] = []
+        elif lower.startswith('allow:') or lower.startswith('disallow:'):
+            rule_type = 'allow' if lower.startswith('allow:') else 'disallow'
+            path = line.split(':', 1)[1].strip()
+            for bot in active_bots:
+                if bot not in bot_rules:
+                    bot_rules[bot] = []
+                bot_rules[bot].append((rule_type, path))
+
+    # Determine status of each AI bot
+    for bot in ai_bots:
+        rules = bot_rules.get(bot, [])
+        wildcard_rules = bot_rules.get('*', [])
+
+        # Check explicit bot rules first
+        if rules:
+            # If bot has an Allow: / rule, it's allowed
+            has_allow_root = any(r[0] == 'allow' and r[1] in ('/', '') for r in rules)
+            has_disallow_root = any(r[0] == 'disallow' and r[1] in ('/', '') for r in rules)
+            if has_disallow_root and not has_allow_root:
+                result["ai_bots_blocked"].append(bot)
+            elif has_allow_root or not has_disallow_root:
                 result["ai_bots"].append(bot)
+            # else: mixed rules, assume allowed
+            else:
+                result["ai_bots"].append(bot)
+        else:
+            # No explicit rules — check wildcard
+            wc_disallow_root = any(r[0] == 'disallow' and r[1] in ('/', '') for r in wildcard_rules)
+            if wc_disallow_root:
+                result["ai_bots_blocked"].append(bot)
+            # else: implicitly allowed (no explicit block) — don't add to either list
+            # We only add to ai_bots if explicitly mentioned with Allow
+
     return result
 
 
-def check_sitemap(url):
-    """Check if sitemap.xml exists"""
+def check_sitemap(url, robots_content=None):
+    """Check if a sitemap exists. Checks robots.txt Sitemap: directive,
+    /sitemap.xml and /sitemap_index.xml. Returns (found: bool, sitemap_url: str|None)."""
     parsed = urllib.parse.urlparse(url)
-    sitemap_url = f"{parsed.scheme}://{parsed.netloc}/sitemap.xml"
+    base = f"{parsed.scheme}://{parsed.netloc}"
+
+    def _is_sitemap(content):
+        if not content:
+            return False
+        cl = content.lower()
+        return "<urlset" in cl or "<sitemapindex" in cl or "<?xml" in cl
+
+    # 1. Check Sitemap: directives in robots.txt
+    if robots_content:
+        for line in robots_content.splitlines():
+            line = line.strip()
+            if line.lower().startswith('sitemap:'):
+                sitemap_ref = line.split(':', 1)[1].strip()
+                content, _, _ = fetch_url(sitemap_ref)
+                if _is_sitemap(content):
+                    return True, sitemap_ref
+
+    # 2. Check /sitemap.xml
+    sitemap_url = f"{base}/sitemap.xml"
     content, _, _ = fetch_url(sitemap_url)
-    if not content:
-        return False
-    return "<urlset" in content.lower() or "<sitemapindex" in content.lower() or "<?xml" in content.lower()
+    if _is_sitemap(content):
+        return True, sitemap_url
+
+    # 3. Check /sitemap_index.xml
+    sitemap_index_url = f"{base}/sitemap_index.xml"
+    content, _, _ = fetch_url(sitemap_index_url)
+    if _is_sitemap(content):
+        return True, sitemap_index_url
+
+    return False, None
 
 
 def main():

@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}Domain Overview — SEO-GEO Toolkit{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Domain Overview</h1>
+  <p class="subtitle">Organic rankings, top keywords, competitors and backlinks for any domain</p>
+</div>
+
+<form method="POST" id="domain-form" class="form-card">
+  {% if clients %}
+  <div class="form-group">
+    <label for="client-select">Load client profile</label>
+    <select id="client-select" data-clients='{{ clients | tojson }}' data-target-field="domain" data-domain-prefix="">
+      <option value="">— Select a client —</option>
+      {% for c in clients %}
+        <option value="{{ c.id }}" data-domain="{{ c.domain }}" data-location="{{ c.location_code }}">{{ c.name }}{% if c.domain %} ({{ c.domain }}){% endif %}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  <div class="form-group">
+    <label for="domain">Domain <span class="required">*</span></label>
+    <input type="text" id="domain" name="domain" value="{{ form.get('domain', '') }}" placeholder="e.g. numiko.com" required autocomplete="off">
+  </div>
+
+  <div class="form-group">
+    <label for="location">Location</label>
+    <select id="location" name="location">
+      <option value="2826" {% if form.get('location', '2826') == '2826' %}selected{% endif %}>🇬🇧 United Kingdom</option>
+      <option value="2840" {% if form.get('location') == '2840' %}selected{% endif %}>🇺🇸 United States</option>
+      <option value="2124" {% if form.get('location') == '2124' %}selected{% endif %}>🇨🇦 Canada</option>
+      <option value="2036" {% if form.get('location') == '2036' %}selected{% endif %}>🇦🇺 Australia</option>
+    </select>
+  </div>
+
+  <button type="submit" class="btn btn-primary" id="domain-submit">
+    <span class="btn-text">Analyse Domain</span>
+    <span class="btn-loading" hidden>Analysing&hellip;</span>
+  </button>
+</form>
+
+{% if error %}
+  <div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+{% if result %}
+<div class="results-section">
+  <h2>Overview for <strong>{{ result.domain }}</strong></h2>
+
+  {% if result.errors %}
+  <div class="alert alert-warn" style="margin-bottom:16px;">
+    <strong>Note:</strong> Some sections could not load:
+    {% for err in result.errors %}<br><small>• {{ err }}</small>{% endfor %}
+  </div>
+  {% endif %}
+
+  {# ── Section 1: Rank Metrics ── #}
+  {% if result.rank_overview %}
+  <div class="section">
+    <h2>Domain Rank Metrics</h2>
+    <div class="metric-cards">
+      {% if result.rank_overview.rank %}
+      <div class="metric-card">
+        <div class="metric-value">{{ result.rank_overview.rank }}</div>
+        <div class="metric-label">Domain Rank</div>
+      </div>
+      {% endif %}
+      <div class="metric-card">
+        <div class="metric-value">{{ result.rank_overview.etv }}</div>
+        <div class="metric-label">Est. Traffic / mo</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value">{{ result.rank_overview.keywords_count }}</div>
+        <div class="metric-label">Organic Keywords</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value">{{ result.rank_overview.pos_1_3 }}</div>
+        <div class="metric-label">Positions 1–3</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value">{{ result.rank_overview.pos_4_10 }}</div>
+        <div class="metric-label">Positions 4–10</div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Section 2: Top Ranking Keywords ── #}
+  <div class="section">
+    <h2>Top Ranking Keywords</h2>
+    {% if result.keywords %}
+    <table class="results-table sortable-table" id="domain-kw-table">
+      <thead>
+        <tr>
+          <th class="sortable" data-col="0">Keyword</th>
+          <th class="sortable" data-col="1" data-type="number">Position</th>
+          <th class="sortable" data-col="2" data-type="number">Volume</th>
+          <th>URL</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for kw in result.keywords %}
+        <tr>
+          <td>{{ kw.keyword }}</td>
+          <td data-sort="{{ kw.position }}">{{ kw.position }}</td>
+          <td data-sort="{{ kw.volume_raw }}">{{ kw.volume }}</td>
+          <td><small>{{ kw.url[:60] }}{% if kw.url | length > 60 %}&hellip;{% endif %}</small></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty-state">No ranking keywords found. This may require a DataForSEO Labs subscription.</p>
+    {% endif %}
+  </div>
+
+  {# ── Section 3: Competitors ── #}
+  <div class="section">
+    <h2>Top Competitors</h2>
+    {% if result.competitors %}
+    <table class="results-table sortable-table" id="competitors-table">
+      <thead>
+        <tr>
+          <th class="sortable" data-col="0">Competitor Domain</th>
+          <th class="sortable" data-col="1" data-type="number">Common Keywords</th>
+          <th class="sortable" data-col="2" data-type="number">Relevance</th>
+          <th class="sortable" data-col="3" data-type="number">Domain Rank</th>
+          <th>Analyse</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in result.competitors %}
+        <tr>
+          <td>{{ c.domain }}</td>
+          <td data-sort="{{ c.common_keywords }}">{{ "{:,}".format(c.common_keywords) }}</td>
+          <td data-sort="{{ c.relevance }}">{{ c.relevance }}</td>
+          <td data-sort="{{ c.domain_rank or 0 }}">{{ c.domain_rank or '—' }}</td>
+          <td><a href="/domain" onclick="document.getElementById('domain').value='{{ c.domain }}';return false;" class="btn btn-secondary btn-sm">→ Analyse</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty-state">No competitor data found. This may require a DataForSEO Labs subscription.</p>
+    {% endif %}
+  </div>
+
+  {# ── Section 4: Backlinks ── #}
+  <div class="section">
+    <h2>Backlinks Summary</h2>
+    {% if result.backlinks %}
+    <div class="metric-cards">
+      {% if result.backlinks.rank %}
+      <div class="metric-card">
+        <div class="metric-value">{{ result.backlinks.rank }}</div>
+        <div class="metric-label">Domain Rank</div>
+      </div>
+      {% endif %}
+      <div class="metric-card">
+        <div class="metric-value">{{ "{:,}".format(result.backlinks.referring_domains) }}</div>
+        <div class="metric-label">Referring Domains</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value">{{ "{:,}".format(result.backlinks.backlinks) }}</div>
+        <div class="metric-label">Total Backlinks</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value">{{ "{:,}".format(result.backlinks.dofollow) }}</div>
+        <div class="metric-label">Dofollow</div>
+      </div>
+    </div>
+    {% else %}
+    <p class="empty-state">No backlinks data found. This may require a DataForSEO Backlinks API subscription.</p>
+    {% endif %}
+  </div>
+
+</div>
+{% endif %}
+{% endblock %}

@@ -3,9 +3,9 @@ Parameterized GEO Audit Report generator.
 Produces a full branded DOCX GEO audit report for any client/URL.
 
 params dict keys (all optional with sensible defaults):
-  client_name   - e.g. "Still Water Grasmere"
-  client_domain - e.g. "stillwatergrasmere.co.uk"
-  project_name  - e.g. "Grasmere Project"
+  client_name   - e.g. "Numiko"
+  client_domain - e.g. "numiko.com"
+  project_name  - e.g. "Website Relaunch 2026"
   date          - e.g. "February 2026"
   logo_path     - absolute path to logo image (falls back to agency logo)
 
@@ -14,7 +14,8 @@ audit dict keys (from audit_service.run_audit()):
   description, description_length, description_ok,
   og_tags, h1, jsonld_count,
   load_time, load_time_ok,
-  robots_exists, ai_bots, has_sitemap, score
+  robots_exists, ai_bots, ai_bots_blocked, has_sitemap, sitemap_url, score,
+  backlinks_rank, referring_domains, total_backlinks
 """
 import os
 from datetime import datetime
@@ -79,8 +80,13 @@ def build_geo_audit_report(params: dict, audit: dict) -> Document:
     load_time_ok = audit.get('load_time_ok', False)
     robots_exists = audit.get('robots_exists', False)
     ai_bots = audit.get('ai_bots', [])
+    ai_bots_blocked = audit.get('ai_bots_blocked', [])
     has_sitemap = audit.get('has_sitemap', False)
+    sitemap_url = audit.get('sitemap_url') or '/sitemap.xml'
     url = audit.get('url', client_domain)
+    backlinks_rank = audit.get('backlinks_rank')
+    referring_domains = audit.get('referring_domains')
+    total_backlinks = audit.get('total_backlinks')
 
     score_hex = _score_color(score)
     score_rgb = (int(score_hex[0:2], 16), int(score_hex[2:4], 16), int(score_hex[4:6], 16))
@@ -124,7 +130,10 @@ def build_geo_audit_report(params: dict, audit: dict) -> Document:
                     alignment=WD_ALIGN_PARAGRAPH.CENTER, space_after=Pt(4))
     add_styled_para(doc, 'Generative Engine Optimization', size=10, color=LIGHT_GRAY,
                     alignment=WD_ALIGN_PARAGRAPH.CENTER, space_after=Pt(40))
-    add_styled_para(doc, 'Data sources: Direct site crawl, robots.txt, sitemap.xml',
+    data_sources = 'Data sources: Direct site crawl, robots.txt, sitemap.xml'
+    if backlinks_rank is not None or referring_domains is not None:
+        data_sources += ', DataForSEO Backlinks API'
+    add_styled_para(doc, data_sources,
                     size=8, color=LIGHT_GRAY, alignment=WD_ALIGN_PARAGRAPH.CENTER,
                     space_after=Pt(2))
     add_styled_para(doc, 'Based on Princeton GEO research framework (KDD 2024)',
@@ -201,10 +210,29 @@ def build_geo_audit_report(params: dict, audit: dict) -> Document:
                      'Good' if load_time_ok else ('Weak' if load_time else 'Missing')])
     findings.append(['robots.txt', 'Found' if robots_exists else 'Not found',
                      'Good' if robots_exists else 'Missing'])
-    findings.append(['AI Bot Access', ', '.join(ai_bots) if ai_bots else 'Not configured',
-                     'Good' if ai_bots else 'Missing'])
+    # AI bots: show allowed and blocked
+    if ai_bots and ai_bots_blocked:
+        ai_bots_value = f'Allowed: {", ".join(ai_bots)}; Blocked: {", ".join(ai_bots_blocked)}'
+        ai_bots_status = 'Partial'
+    elif ai_bots:
+        ai_bots_value = ', '.join(ai_bots)
+        ai_bots_status = 'Good'
+    elif ai_bots_blocked:
+        ai_bots_value = f'Blocked: {", ".join(ai_bots_blocked)}'
+        ai_bots_status = 'Warning'
+    else:
+        ai_bots_value = 'Not configured'
+        ai_bots_status = 'Missing'
+    findings.append(['AI Bot Access', ai_bots_value, ai_bots_status])
     findings.append(['XML Sitemap', 'Found' if has_sitemap else 'Not found',
                      'Good' if has_sitemap else 'Missing'])
+    # Backlinks (if available)
+    if backlinks_rank is not None:
+        findings.append(['Domain Rank', str(backlinks_rank), 'Info'])
+    if referring_domains is not None:
+        findings.append(['Referring Domains', f'{referring_domains:,}', 'Info'])
+    if total_backlinks is not None:
+        findings.append(['Total Backlinks', f'{total_backlinks:,}', 'Info'])
 
     add_table(doc, ['Check', 'Value', 'Status'], findings)
 
@@ -424,32 +452,38 @@ def build_geo_audit_report(params: dict, audit: dict) -> Document:
 
     add_heading(doc, 'AI Bot Directives', level=2)
 
+    def _bot_status(bot):
+        if bot in ai_bots:
+            return 'Explicitly allowed'
+        if bot in ai_bots_blocked:
+            return 'BLOCKED — remove Disallow'
+        if robots_exists:
+            return 'Implicitly allowed (not mentioned)'
+        return 'Unknown'
+
     bot_rows = [
-        ['GPTBot', 'ChatGPT / OpenAI',
-         'Mentioned' if 'GPTBot' in ai_bots else 'Not mentioned',
-         'Implicitly allowed' if robots_exists and 'GPTBot' not in ai_bots else ('Explicitly configured' if 'GPTBot' in ai_bots else 'Unknown')],
-        ['ChatGPT-User', 'ChatGPT browsing',
-         'Mentioned' if 'ChatGPT-User' in ai_bots else 'Not mentioned',
-         'Implicitly allowed' if robots_exists else 'Unknown'],
-        ['ClaudeBot', 'Claude / Anthropic',
-         'Mentioned' if 'ClaudeBot' in ai_bots else 'Not mentioned',
-         'Implicitly allowed' if robots_exists else 'Unknown'],
-        ['anthropic-ai', 'Claude (legacy)',
-         'Mentioned' if 'anthropic-ai' in ai_bots else 'Not mentioned',
-         'Implicitly allowed' if robots_exists else 'Unknown'],
-        ['PerplexityBot', 'Perplexity',
-         'Mentioned' if 'PerplexityBot' in ai_bots else 'Not mentioned',
-         'Implicitly allowed' if robots_exists else 'Unknown'],
-        ['Googlebot', 'Google AI Overview',
-         'Standard', 'Implicitly allowed (standard)'],
-        ['Bingbot', 'Copilot / Bing',
-         'Standard', 'Implicitly allowed (standard)'],
+        ['GPTBot', 'ChatGPT / OpenAI', 'Yes' if 'GPTBot' in ai_bots or 'GPTBot' in ai_bots_blocked else 'No', _bot_status('GPTBot')],
+        ['ChatGPT-User', 'ChatGPT browsing', 'Yes' if 'ChatGPT-User' in ai_bots or 'ChatGPT-User' in ai_bots_blocked else 'No', _bot_status('ChatGPT-User')],
+        ['ClaudeBot', 'Claude / Anthropic', 'Yes' if 'ClaudeBot' in ai_bots or 'ClaudeBot' in ai_bots_blocked else 'No', _bot_status('ClaudeBot')],
+        ['anthropic-ai', 'Claude (legacy)', 'Yes' if 'anthropic-ai' in ai_bots or 'anthropic-ai' in ai_bots_blocked else 'No', _bot_status('anthropic-ai')],
+        ['PerplexityBot', 'Perplexity', 'Yes' if 'PerplexityBot' in ai_bots or 'PerplexityBot' in ai_bots_blocked else 'No', _bot_status('PerplexityBot')],
+        ['Googlebot', 'Google AI Overview', 'Standard', 'Implicitly allowed (standard)'],
+        ['Bingbot', 'Copilot / Bing', 'Standard', 'Implicitly allowed (standard)'],
     ]
 
     add_table(doc, ['Bot', 'Platform', 'In robots.txt', 'Status'], bot_rows)
 
-    if not ai_bots:
-        add_callout_box(doc, 'Recommendation: Add AI Bot Directives', [
+    if ai_bots_blocked:
+        add_callout_box(doc, 'Critical: AI Bots Are Blocked', [
+            f'The following AI crawlers are explicitly blocked in robots.txt: {", ".join(ai_bots_blocked)}.',
+            'This prevents these AI platforms from indexing your content and citing it in answers.',
+            '',
+            'To fix: change the Disallow rule to Allow for each AI bot:',
+            '',
+            *[f'User-agent: {bot}\nAllow: /' for bot in ai_bots_blocked],
+        ], 'B42828', 'FFF0F0')
+    elif not ai_bots:
+        add_callout_box(doc, 'Recommendation: Add Explicit AI Bot Directives', [
             'No AI-specific crawler rules were found in robots.txt. '
             'While AI bots are implicitly allowed if not blocked, explicitly allowing them '
             'sends a positive signal that the site welcomes AI crawler access.',
@@ -469,16 +503,16 @@ def build_geo_audit_report(params: dict, audit: dict) -> Document:
         ], 'C87814', 'FFF8E6')
     else:
         add_styled_para(doc, (
-            f'AI bots found in robots.txt: {", ".join(ai_bots)}. '
-            'This is a positive signal. Verify that these bots are explicitly allowed '
-            '(not blocked) and that no Crawl-delay is set that would slow AI indexing.'
+            f'AI bots explicitly allowed in robots.txt: {", ".join(ai_bots)}. '
+            'This is a positive signal. Verify that no Crawl-delay is set '
+            'that would slow AI indexing.'
         ))
 
     # Sitemap
     add_heading(doc, 'XML Sitemap', level=2)
 
     if has_sitemap:
-        add_styled_para(doc, 'Sitemap found at /sitemap.xml — good.')
+        add_styled_para(doc, f'Sitemap found at {sitemap_url} — good.')
         add_styled_para(doc, (
             'Ensure the sitemap is up to date, includes all important pages, '
             'and is referenced in robots.txt (Sitemap: https://yourdomain.com/sitemap.xml).'
@@ -546,8 +580,64 @@ def build_geo_audit_report(params: dict, audit: dict) -> Document:
 
     doc.add_page_break()
 
-    # ── 5. CONTENT ANALYSIS ─────────────────────────────────────────────────
-    add_heading(doc, '5. Content Analysis: Princeton GEO Methods', level=1)
+    # ── 5. DOMAIN AUTHORITY ──────────────────────────────────────────────────
+    add_heading(doc, '5. Domain Authority & Backlinks', level=1)
+
+    add_styled_para(doc, (
+        'Domain authority is a significant factor in AI citation decisions. AI engines '
+        'preferentially cite sources with high authority — indicated by the number of '
+        'referring domains, total backlinks, and domain rank. Sites with strong backlink '
+        'profiles are more likely to be included in AI-generated answers.'
+    ))
+
+    if backlinks_rank is not None or referring_domains is not None or total_backlinks is not None:
+        add_heading(doc, 'Domain Metrics (from DataForSEO Backlinks API)', level=2)
+        bl_rows = []
+        if backlinks_rank is not None:
+            bl_rows.append(['Domain Rank', str(backlinks_rank),
+                            'Strong' if backlinks_rank and backlinks_rank >= 30 else 'Moderate' if backlinks_rank and backlinks_rank >= 10 else 'Weak'])
+        if referring_domains is not None:
+            bl_rows.append(['Referring Domains', f'{referring_domains:,}',
+                            'Strong' if referring_domains >= 500 else 'Moderate' if referring_domains >= 50 else 'Weak'])
+        if total_backlinks is not None:
+            bl_rows.append(['Total Backlinks', f'{total_backlinks:,}',
+                            'Strong' if total_backlinks >= 5000 else 'Moderate' if total_backlinks >= 200 else 'Weak'])
+        add_table(doc, ['Metric', 'Value', 'Assessment'], bl_rows)
+
+        if referring_domains is not None and referring_domains < 50:
+            add_callout_box(doc, 'Recommendation: Build Domain Authority', [
+                f'{client_domain} has {referring_domains:,} referring domains. '
+                'Domains with fewer than 50 referring domains tend to receive lower AI citation rates. '
+                '',
+                'To improve domain authority:',
+                '• Publish original research, statistics, or data that others will cite',
+                '• Build relationships with industry publications for guest posts and mentions',
+                '• Create linkable assets: free tools, templates, guides',
+                '• Register in industry directories and association listings',
+                '• Submit to relevant press releases and PR platforms',
+            ], 'C87814', 'FFF8E6')
+    else:
+        add_styled_para(doc, (
+            'Domain authority metrics were not available during this audit. '
+            'Check Ahrefs, Moz, or SEMrush for Domain Rating / Domain Authority scores. '
+            'For AI citation prioritisation, a Domain Rating of 40+ is typically a '
+            'meaningful threshold.'
+        ))
+
+    add_heading(doc, 'Why Backlinks Matter for GEO', level=2)
+
+    add_table(doc,
+              ['Authority Level', 'Referring Domains', 'ChatGPT Cite Probability', 'Priority'],
+              [
+                  ['High Authority', '500+', 'High — frequently cited', 'Already strong'],
+                  ['Medium Authority', '50–500', 'Moderate — cited for niche queries', 'Build further'],
+                  ['Low Authority', '< 50', 'Low — rarely cited unprompted', 'Priority gap'],
+              ])
+
+    doc.add_page_break()
+
+    # ── 6. CONTENT ANALYSIS ─────────────────────────────────────────────────
+    add_heading(doc, '6. Content Analysis: Princeton GEO Methods', level=1)  # noqa
 
     add_styled_para(doc, (
         'The Princeton GEO framework identifies 9 content methods ranked by their impact on '
@@ -634,7 +724,7 @@ def build_geo_audit_report(params: dict, audit: dict) -> Document:
     doc.add_page_break()
 
     # ── 6. AI PLATFORM ASSESSMENT ───────────────────────────────────────────
-    add_heading(doc, '6. AI Platform Assessment', level=1)
+    add_heading(doc, '7. AI Platform Assessment', level=1)
 
     add_styled_para(doc, (
         'Different AI platforms use different signals and indexes. Understanding each platform\'s '
@@ -687,7 +777,7 @@ def build_geo_audit_report(params: dict, audit: dict) -> Document:
     doc.add_page_break()
 
     # ── 7. SCORECARD ────────────────────────────────────────────────────────
-    add_heading(doc, '7. GEO Readiness Scorecard', level=1)
+    add_heading(doc, '8. GEO Readiness Scorecard', level=1)
 
     scorecard_rows = []
 
@@ -726,10 +816,20 @@ def build_geo_audit_report(params: dict, audit: dict) -> Document:
 
     # AI bots
     bots_score = 15 if ai_bots else 0
-    scorecard_rows.append(['AI Bot Access', f'{bots_score}/15',
-                            'Good' if ai_bots else 'Missing',
-                            f'{len(ai_bots)} bot{"s" if len(ai_bots) != 1 else ""} configured'
-                            if ai_bots else 'No AI bot directives in robots.txt'])
+    if ai_bots and ai_bots_blocked:
+        bots_detail = f'{len(ai_bots)} allowed, {len(ai_bots_blocked)} blocked'
+        bots_rating = 'Partial'
+    elif ai_bots:
+        bots_detail = f'{len(ai_bots)} bot{"s" if len(ai_bots) != 1 else ""} explicitly allowed'
+        bots_rating = 'Good'
+    elif ai_bots_blocked:
+        bots_detail = f'{len(ai_bots_blocked)} bot{"s" if len(ai_bots_blocked) != 1 else ""} explicitly blocked'
+        bots_rating = 'Blocked'
+        bots_score = 0
+    else:
+        bots_detail = 'No AI bot directives in robots.txt'
+        bots_rating = 'Missing'
+    scorecard_rows.append(['AI Bot Access', f'{bots_score}/15', bots_rating, bots_detail])
 
     # Sitemap
     sitemap_score = 10 if has_sitemap else 0
@@ -767,7 +867,7 @@ def build_geo_audit_report(params: dict, audit: dict) -> Document:
     doc.add_page_break()
 
     # ── 8. RECOMMENDATIONS ──────────────────────────────────────────────────
-    add_heading(doc, '8. Recommendations', level=1)
+    add_heading(doc, '9. Recommendations', level=1)
 
     rec_num = 1
 
@@ -934,8 +1034,12 @@ def build_geo_audit_report(params: dict, audit: dict) -> Document:
                   ['JSON-LD blocks', str(jsonld_count), 'application/ld+json script detection'],
                   ['Load time', f'{load_time}s' if load_time else 'Not measured', 'urllib HTTP request timer'],
                   ['robots.txt', 'Found' if robots_exists else 'Not found', 'GET /robots.txt'],
-                  ['AI bots in robots.txt', ', '.join(ai_bots) or 'None', 'Text search in robots.txt'],
-                  ['sitemap.xml', 'Found' if has_sitemap else 'Not found', 'GET /sitemap.xml + XML validation'],
+                  ['AI bots allowed', ', '.join(ai_bots) or 'None', 'robots.txt Allow directive parsing'],
+                  ['AI bots blocked', ', '.join(ai_bots_blocked) or 'None', 'robots.txt Disallow directive parsing'],
+                  ['sitemap.xml', f'Found at {sitemap_url}' if has_sitemap else 'Not found', 'Multi-location sitemap detection'],
+                  ['Domain Rank', str(backlinks_rank) if backlinks_rank is not None else 'Not fetched', 'DataForSEO Backlinks API'],
+                  ['Referring Domains', f'{referring_domains:,}' if referring_domains is not None else 'Not fetched', 'DataForSEO Backlinks API'],
+                  ['Total Backlinks', f'{total_backlinks:,}' if total_backlinks is not None else 'Not fetched', 'DataForSEO Backlinks API'],
                   ['GEO Score', f'{score}/100', 'Weighted scoring algorithm'],
                   ['Audit date', date_str, 'Report generation date'],
               ])

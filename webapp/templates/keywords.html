@@ -62,7 +62,10 @@
 <div class="results-section">
   <div class="results-header">
     <h2>Results for &ldquo;{{ result.seed_keyword }}&rdquo;</h2>
-    <span class="results-count">{{ result.count }} keyword{% if result.count != 1 %}s{% endif %}</span>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <span class="results-count">{{ result.count }} keyword{% if result.count != 1 %}s{% endif %}</span>
+      <a href="/keywords/export?keyword={{ result.seed_keyword | urlencode }}&location={{ result.location_code }}" class="btn btn-secondary btn-sm">⬇ Export CSV</a>
+    </div>
   </div>
 
   {% if result.keywords %}
@@ -72,6 +75,9 @@
         <th class="sortable" data-col="0">Keyword</th>
         <th class="sortable" data-col="1" data-type="number">Volume</th>
         <th class="sortable" data-col="2" data-type="number">Difficulty</th>
+        <th class="sortable" data-col="3" data-type="number">CPC (£)</th>
+        <th>Intent</th>
+        <th class="sortable" data-col="5" data-type="number">AI Volume</th>
         <th>Competition</th>
       </tr>
     </thead>
@@ -80,7 +86,10 @@
       <tr>
         <td>{{ kw.keyword }}</td>
         <td data-sort="{{ kw.volume_raw }}">{{ kw.volume }}</td>
-        <td>{{ kw.difficulty }}</td>
+        <td data-sort="{{ kw.difficulty if kw.difficulty != 'N/A' else 0 }}">{{ kw.difficulty }}</td>
+        <td data-sort="{{ kw.cpc_raw }}">{{ kw.cpc }}</td>
+        <td>{% if kw.intent %}<span class="intent-chip intent-{{ kw.intent }}">{{ kw.intent }}</span>{% else %}&mdash;{% endif %}</td>
+        <td data-sort="{{ kw.ai_volume_raw if kw.ai_volume_raw is defined else 0 }}">{{ kw.ai_volume or '—' }}</td>
         <td>{{ kw.competition }}</td>
       </tr>
       {% endfor %}

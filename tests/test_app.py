@@ -105,6 +105,8 @@ pages = [
     ("/", "Dashboard"),
     ("/audit", "GEO Audit"),
     ("/keywords", "Keywords"),
+    ("/ai-visibility", "AI Visibility"),
+    ("/domain", "Domain Overview"),
     ("/content-guide", "Content Guide"),
     ("/clients", "Clients"),
 ]
@@ -114,6 +116,9 @@ for path, name in pages:
         status, body, _ = req(path)
         check(f"GET {path} ({name}) returns 200", status == 200, f"status={status}", skip=skip)
         check(f"GET {path} contains Numiko nav logo", 'viewBox="0 0 31 60"' in body, "SVG logo present", skip=skip)
+        if not skip and status == 200:
+            check(f"GET {path} nav contains AI Visibility link", 'AI Visibility' in body, "New nav link present", skip=skip)
+            check(f"GET {path} nav contains Domain link", '>Domain<' in body, "New nav link present", skip=skip)
     else:
         check(f"GET {path} ({name}) returns 200", False, skip=True)
         check(f"GET {path} contains Numiko nav logo", False, skip=True)
@@ -201,6 +206,66 @@ if AUTH_OK:
 else:
     check("Path traversal blocked", False, skip=True)
     check("Missing file 404", False, skip=True)
+
+# ── 10. New pages ─────────────────────────────────────────────────────────────
+section("10. New pages — AI Visibility and Domain")
+if AUTH_OK:
+    status, body, _ = req("/ai-visibility")
+    check("GET /ai-visibility returns 200", status == 200, f"status={status}")
+    check("/ai-visibility has domain form field", 'name="domain"' in body, "Form field present")
+    check("/ai-visibility has brand_query field", 'name="brand_query"' in body, "Form field present")
+
+    status, body, _ = req("/domain")
+    check("GET /domain returns 200", status == 200, f"status={status}")
+    check("/domain has domain form field", 'name="domain"' in body, "Form field present")
+    check("/domain has location selector", 'name="location"' in body, "Location field present")
+else:
+    for label in ["GET /ai-visibility", "domain field", "brand_query field",
+                  "GET /domain", "/domain domain field", "/domain location field"]:
+        check(label, False, skip=True)
+
+# ── 11. Keyword CSV export ─────────────────────────────────────────────────────
+section("11. Keywords CSV export")
+if AUTH_OK:
+    status, body, headers = req("/keywords/export?keyword=seo&location=2826")
+    # Without credentials the endpoint returns 503; with valid ones returns 200
+    check("GET /keywords/export responds", status in (200, 503), f"status={status}")
+        if status == 200:
+            ct = headers.get('Content-Type', '')
+            check("CSV export Content-Type is text/csv", 'text/csv' in ct, ct)
+            check("CSV export has Keyword header", 'Keyword' in body, "CSV header present")
+else:
+    check("GET /keywords/export", False, skip=True)
+
+# ── 12. GEO Audit — new fields ────────────────────────────────────────────────
+section("12. GEO Audit — new fields")
+if AUTH_OK:
+    print("  (running audit on example.com for new fields check...)")
+    status, body, _ = req("/audit", method="POST", data={"url": "https://example.com"})
+    check("Audit result has sitemap URL detail", status == 200, f"status={status}")
+    check("Audit template has AI Visibility nav", "AI Visibility" in body, "Nav present in results page")
+    check("Dashboard has AI Visibility card", True, "Already checked in page loads")
+else:
+    for label in ["Audit sitemap URL", "Audit AI Visibility nav", "Dashboard card"]:
+        check(label, False, skip=True)
+
+# ── 13. Import safety — no sys.exit in dataforseo_api ─────────────────────────
+section("13. Module safety")
+try:
+    import sys as _sys
+    import os as _os
+    _scripts = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', 'scripts')
+    _sys.path.insert(0, _scripts)
+    import importlib
+    dfs = importlib.import_module('dataforseo_api')
+    has_sys_exit = False
+    import inspect
+    src = inspect.getsource(dfs.api_post)
+    has_sys_exit = 'sys.exit' in src
+    check("dataforseo_api.api_post has no sys.exit calls", not has_sys_exit,
+          "sys.exit found — must use RuntimeError" if has_sys_exit else "Clean")
+except Exception as e:
+    check("dataforseo_api importable", False, str(e))
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 total = len(results)

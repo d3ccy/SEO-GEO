@@ -34,10 +34,14 @@ def run_audit(url: str) -> dict:
         meta = extract_meta(content)
 
     robots = check_robots(url)
-    has_sitemap = check_sitemap(url)
+    robots_content = robots.get('content')
+    has_sitemap, sitemap_url = check_sitemap(url, robots_content=robots_content)
 
     title = meta.get('title') or ''
     description = meta.get('description') or ''
+
+    # Optional: fetch backlinks summary from DataForSEO if credentials are available
+    backlinks_data = _fetch_backlinks(url)
 
     return {
         'url': url,
@@ -56,9 +60,38 @@ def run_audit(url: str) -> dict:
         'load_time_ok': isinstance(load_time, (int, float)) and load_time < 3,
         'robots_exists': robots.get('exists', False),
         'ai_bots': robots.get('ai_bots', []),
+        'ai_bots_blocked': robots.get('ai_bots_blocked', []),
         'has_sitemap': has_sitemap,
+        'sitemap_url': sitemap_url,
+        'backlinks_rank': backlinks_data.get('rank'),
+        'referring_domains': backlinks_data.get('referring_domains'),
+        'total_backlinks': backlinks_data.get('backlinks'),
         'score': _calculate_score(meta, robots, has_sitemap, load_time, page_blocked),
     }
+
+
+def _fetch_backlinks(url: str) -> dict:
+    """Fetch backlinks summary from DataForSEO. Returns empty dict on any failure."""
+    try:
+        _scripts_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'scripts')
+        sys.path.insert(0, os.path.abspath(_scripts_dir))
+        import dataforseo_api as _dfs
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        domain = parsed.netloc
+        data = [{'target': domain, 'include_subdomains': True}]
+        response = _dfs.api_post('backlinks/summary/live', data)
+        results = _dfs.get_result(response)
+        if results:
+            item = results[0]
+            return {
+                'rank': item.get('rank'),
+                'referring_domains': item.get('referring_domains'),
+                'backlinks': item.get('backlinks'),
+            }
+    except Exception:
+        pass
+    return {}
 
 
 def _calculate_score(meta, robots, has_sitemap, load_time, page_blocked=False) -> int:
@@ -76,6 +109,7 @@ def _calculate_score(meta, robots, has_sitemap, load_time, page_blocked=False) -
         score += 10
     if meta.get('jsonld_count', 0) > 0:
         score += 20
+    # Score AI bots correctly: only award points for explicitly ALLOWED bots
     if robots.get('ai_bots'):
         score += 15
     if has_sitemap:

@@ -6,45 +6,42 @@ import urllib.request
 import urllib.parse
 import json
 import base64
-import sys
 from credential import get_dataforseo_credentials
 
 API_BASE = "https://api.dataforseo.com/v3"
 
 
 def api_post(endpoint: str, data: list) -> dict:
-    """Make POST request to DataForSEO API"""
+    """Make POST request to DataForSEO API. Raises RuntimeError on failure."""
     login, password = get_dataforseo_credentials()
     if not login or not password:
-        print("error: DATAFORSEO_LOGIN and DATAFORSEO_PASSWORD not set", file=sys.stderr)
-        print("Run: export DATAFORSEO_LOGIN=your_login", file=sys.stderr)
-        print("     export DATAFORSEO_PASSWORD=your_password", file=sys.stderr)
-        sys.exit(1)
-    
+        raise RuntimeError(
+            "DataForSEO credentials not configured. "
+            "Set DATAFORSEO_LOGIN and DATAFORSEO_PASSWORD environment variables."
+        )
+
     url = f"{API_BASE}/{endpoint}"
     auth = base64.b64encode(f"{login}:{password}".encode()).decode()
     headers = {
         "Authorization": f"Basic {auth}",
         "Content-Type": "application/json"
     }
-    
+
     req = urllib.request.Request(
         url,
         data=json.dumps(data).encode(),
         headers=headers,
         method="POST"
     )
-    
+
     try:
         with urllib.request.urlopen(req, timeout=60) as resp:
             return json.loads(resp.read().decode())
     except urllib.error.HTTPError as e:
         error_body = e.read().decode()
-        print(f"error: HTTP {e.code} - {error_body}", file=sys.stderr)
-        sys.exit(1)
+        raise RuntimeError(f"DataForSEO API error HTTP {e.code}: {error_body}")
     except Exception as e:
-        print(f"error: {e}", file=sys.stderr)
-        sys.exit(1)
+        raise RuntimeError(f"DataForSEO request failed: {e}")
 
 
 def format_count(n) -> str:
@@ -62,12 +59,11 @@ def format_count(n) -> str:
 
 
 def get_result(response: dict) -> list:
-    """Extract result from API response"""
+    """Extract result from API response. Returns empty list on error."""
     if not response.get("tasks"):
         return []
     task = response["tasks"][0]
     if task.get("status_code") != 20000:
-        print(f"error: {task.get('status_message', 'Unknown error')}", file=sys.stderr)
         return []
     return task.get("result", [])
 

@@ -1,3 +1,36 @@
+// ── Tab switching (multi-LLM comparison) ────────────────────────────────────
+
+document.querySelectorAll('.tab-nav').forEach(function(nav) {
+  nav.querySelectorAll('.tab-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var tabId = btn.dataset.tab;
+      var container = nav.parentElement;
+      // Deactivate all tabs and panels in this container
+      nav.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+      container.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+      // Activate selected
+      btn.classList.add('active');
+      var panel = container.querySelector('#' + tabId);
+      if (panel) panel.classList.add('active');
+    });
+  });
+});
+
+// ── Competitor domain quick-fill ─────────────────────────────────────────────
+
+document.querySelectorAll('.competitor-analyse-btn').forEach(function(btn) {
+  btn.addEventListener('click', function(e) {
+    e.preventDefault();
+    var targetDomain = btn.dataset.domain;
+    var domainField = document.getElementById('domain');
+    if (domainField && targetDomain) {
+      domainField.value = targetDomain;
+      domainField.scrollIntoView({ behavior: 'smooth' });
+      document.getElementById('domain-form').submit();
+    }
+  });
+});
+
 // ── Client profile auto-fill ────────────────────────────────────────────────
 
 document.querySelectorAll('#client-select').forEach(function(select) {
@@ -23,6 +56,16 @@ document.querySelectorAll('#client-select').forEach(function(select) {
     var locationField = document.getElementById('location');
     if (locationField && location) {
       locationField.value = location;
+    }
+
+    // AI Visibility + Domain Overview pages: fill domain field
+    var domainField = document.getElementById('domain');
+    if (domainField && domain) {
+      domainField.value = domain;
+    }
+    var brandQueryField = document.getElementById('brand_query');
+    if (brandQueryField && name) {
+      brandQueryField.value = name;
     }
 
     // Content guide page: fill all fields

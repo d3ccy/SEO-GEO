@@ -21,6 +21,8 @@
     <ul class="nav-links">
       <li><a href="{{ url_for('audit') }}" {% if request.endpoint == 'audit' %}class="active"{% endif %}>GEO Audit</a></li>
       <li><a href="{{ url_for('keywords') }}" {% if request.endpoint == 'keywords' %}class="active"{% endif %}>Keywords</a></li>
+      <li><a href="{{ url_for('ai_visibility') }}" {% if request.endpoint == 'ai_visibility' %}class="active"{% endif %}>AI Visibility</a></li>
+      <li><a href="{{ url_for('domain') }}" {% if request.endpoint == 'domain' %}class="active"{% endif %}>Domain</a></li>
       <li><a href="{{ url_for('content_guide') }}" {% if request.endpoint == 'content_guide' %}class="active"{% endif %}>Content Guide</a></li>
       <li><a href="{{ url_for('clients') }}" {% if request.endpoint in ('clients', 'client_new', 'client_edit') %}class="active"{% endif %}>Clients</a></li>
     </ul>
