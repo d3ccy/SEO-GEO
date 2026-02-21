@@ -230,10 +230,10 @@ if AUTH_OK:
     status, body, headers = req("/keywords/export?keyword=seo&location=2826")
     # Without credentials the endpoint returns 503; with valid ones returns 200
     check("GET /keywords/export responds", status in (200, 503), f"status={status}")
-        if status == 200:
-            ct = headers.get('Content-Type', '')
-            check("CSV export Content-Type is text/csv", 'text/csv' in ct, ct)
-            check("CSV export has Keyword header", 'Keyword' in body, "CSV header present")
+    if status == 200:
+        ct = headers.get('Content-Type', '')
+        check("CSV export Content-Type is text/csv", 'text/csv' in ct, ct)
+        check("CSV export has Keyword header", 'Keyword' in body, "CSV header present")
 else:
     check("GET /keywords/export", False, skip=True)
 
