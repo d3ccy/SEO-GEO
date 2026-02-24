@@ -1,3 +1,4 @@
+import hmac
 from functools import wraps
 from flask import request, Response
 
@@ -11,7 +12,7 @@ def requires_auth(password_getter):
             if not app_password:
                 return f(*args, **kwargs)  # auth disabled
             auth = request.authorization
-            if not auth or auth.password != app_password:
+            if not auth or not hmac.compare_digest(auth.password or '', app_password):
                 return Response(
                     'Authentication required.',
                     401,

@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run tests with coverage
+        env:
+          SECRET_KEY: test-secret-key
+          FLASK_ENV: development
+        run: pytest tests/ -v --cov=webapp --cov-report=term-missing
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check Python syntax (key files)
+        run: |
+          python -m py_compile webapp/app.py
+          python -m py_compile webapp/config.py
+          python -m py_compile webapp/auth.py
+          python -m py_compile webapp/services/audit_service.py
+          python -m py_compile webapp/services/domain_service.py
+          python -m py_compile webapp/services/keyword_service.py
+          python -m py_compile webapp/services/report_service.py
+          python -m py_compile webapp/services/ai_visibility_service.py
+
+      - name: Check requirements files exist
+        run: |
+          test -f requirements.txt && echo "requirements.txt exists"
+          test -f requirements-dev.txt && echo "requirements-dev.txt exists"

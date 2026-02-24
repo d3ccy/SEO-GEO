@@ -1,11 +1,9 @@
-import sys
-import os
-
-# Put scripts/ on path so seo_audit.py can be imported directly
-_SCRIPTS_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'scripts')
-sys.path.insert(0, os.path.abspath(_SCRIPTS_DIR))
+import logging
+from urllib.parse import urlparse
 
 from seo_audit import fetch_url, extract_meta, check_robots, check_sitemap
+
+logger = logging.getLogger(__name__)
 
 
 def run_audit(url: str) -> dict:
@@ -15,6 +13,10 @@ def run_audit(url: str) -> dict:
     with a warning rather than failing completely. robots.txt and sitemap
     checks are attempted regardless of whether the main page is accessible.
     """
+    parsed = urlparse(url)
+    if parsed.scheme and parsed.scheme not in ('http', 'https'):
+        raise ValueError(f'Unsupported URL scheme: {parsed.scheme}. Only http and https are allowed.')
+
     if not url.startswith('http'):
         url = f'https://{url}'
 
@@ -73,8 +75,6 @@ def run_audit(url: str) -> dict:
 def _fetch_backlinks(url: str) -> dict:
     """Fetch backlinks summary from DataForSEO. Returns empty dict on any failure."""
     try:
-        _scripts_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'scripts')
-        sys.path.insert(0, os.path.abspath(_scripts_dir))
         import dataforseo_api as _dfs
         from urllib.parse import urlparse
         parsed = urlparse(url)
@@ -89,8 +89,8 @@ def _fetch_backlinks(url: str) -> dict:
                 'referring_domains': item.get('referring_domains'),
                 'backlinks': item.get('backlinks'),
             }
-    except Exception:
-        pass
+    except (RuntimeError, ImportError, KeyError, TypeError, ConnectionError) as exc:
+        logger.warning('Backlinks fetch failed: %s', exc)
     return {}
 
 

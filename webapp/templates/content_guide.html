@@ -10,10 +10,11 @@
 {% include 'partials/how_to_content_guide.html' %}
 
 <form method="POST" enctype="multipart/form-data" id="content-guide-form" class="form-card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   {% if clients %}
   <div class="form-group">
     <label for="client-select">Load client profile</label>
-    <select id="client-select" data-clients='{{ clients | tojson }}'>
+    <select id="client-select" data-clients="{{ clients | tojson | e }}">
       <option value="">— Select a client (auto-fills fields below) —</option>
       {% for c in clients %}
         <option value="{{ c.id }}"

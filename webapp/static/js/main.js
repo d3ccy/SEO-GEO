@@ -1,90 +1,173 @@
 // ── Tab switching (multi-LLM comparison) ────────────────────────────────────
 
-document.querySelectorAll('.tab-nav').forEach(function(nav) {
-  nav.querySelectorAll('.tab-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var tabId = btn.dataset.tab;
-      var container = nav.parentElement;
-      // Deactivate all tabs and panels in this container
-      nav.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
-      container.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
-      // Activate selected
-      btn.classList.add('active');
-      var panel = container.querySelector('#' + tabId);
-      if (panel) panel.classList.add('active');
+document.querySelectorAll('.tab-nav').forEach((nav) => {
+  // Set ARIA role on the tab list
+  nav.setAttribute('role', 'tablist');
+
+  const buttons = nav.querySelectorAll('.tab-btn');
+
+  buttons.forEach((btn) => {
+    const tabId = btn.dataset.tab;
+
+    // Set ARIA attributes on each tab button
+    btn.setAttribute('role', 'tab');
+    btn.setAttribute('aria-controls', tabId);
+    btn.setAttribute('aria-selected', btn.classList.contains('active') ? 'true' : 'false');
+    btn.setAttribute('tabindex', btn.classList.contains('active') ? '0' : '-1');
+
+    // Set ARIA attributes on the corresponding panel
+    const panel = nav.parentElement.querySelector('#' + tabId);
+    if (panel) {
+      panel.setAttribute('role', 'tabpanel');
+      panel.setAttribute('aria-labelledby', btn.id || tabId + '-tab');
+      // Ensure the button has an id for aria-labelledby
+      if (!btn.id) {
+        btn.id = tabId + '-tab';
+      }
+    }
+
+    btn.addEventListener('click', () => {
+      activateTab(nav, btn);
+    });
+
+    // Keyboard navigation for tabs
+    btn.addEventListener('keydown', (e) => {
+      const currentButtons = Array.from(nav.querySelectorAll('.tab-btn'));
+      const index = currentButtons.indexOf(btn);
+      let targetIndex = -1;
+
+      switch (e.key) {
+        case 'ArrowRight':
+        case 'ArrowDown':
+          e.preventDefault();
+          targetIndex = (index + 1) % currentButtons.length;
+          break;
+        case 'ArrowLeft':
+        case 'ArrowUp':
+          e.preventDefault();
+          targetIndex = (index - 1 + currentButtons.length) % currentButtons.length;
+          break;
+        case 'Home':
+          e.preventDefault();
+          targetIndex = 0;
+          break;
+        case 'End':
+          e.preventDefault();
+          targetIndex = currentButtons.length - 1;
+          break;
+        default:
+          return;
+      }
+
+      if (targetIndex >= 0) {
+        currentButtons[targetIndex].focus();
+        activateTab(nav, currentButtons[targetIndex]);
+      }
     });
   });
 });
 
-// ── Competitor domain quick-fill ─────────────────────────────────────────────
+/**
+ * Activate a tab button and its corresponding panel within a tab nav.
+ */
+function activateTab(nav, btn) {
+  const tabId = btn.dataset.tab;
+  const container = nav.parentElement;
 
-document.querySelectorAll('.competitor-analyse-btn').forEach(function(btn) {
-  btn.addEventListener('click', function(e) {
-    e.preventDefault();
-    var targetDomain = btn.dataset.domain;
-    var domainField = document.getElementById('domain');
-    if (domainField && targetDomain) {
-      domainField.value = targetDomain;
-      domainField.scrollIntoView({ behavior: 'smooth' });
-      document.getElementById('domain-form').submit();
-    }
+  // Deactivate all tabs and panels in this container
+  nav.querySelectorAll('.tab-btn').forEach((b) => {
+    b.classList.remove('active');
+    b.setAttribute('aria-selected', 'false');
+    b.setAttribute('tabindex', '-1');
   });
+  container.querySelectorAll('.tab-panel').forEach((p) => {
+    p.classList.remove('active');
+  });
+
+  // Activate selected
+  btn.classList.add('active');
+  btn.setAttribute('aria-selected', 'true');
+  btn.setAttribute('tabindex', '0');
+
+  const panel = container.querySelector('#' + tabId);
+  if (panel) {
+    panel.classList.add('active');
+  }
+}
+
+// ── Competitor domain quick-fill (event delegation) ─────────────────────────
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.competitor-analyse-btn');
+  if (!btn) return;
+
+  e.preventDefault();
+  const targetDomain = btn.dataset.domain;
+  const domainField = document.getElementById('domain');
+  if (domainField && targetDomain) {
+    domainField.value = targetDomain;
+    domainField.scrollIntoView({ behavior: 'smooth' });
+    const form = document.getElementById('domain-form');
+    if (form) {
+      form.submit();
+    }
+  }
 });
 
 // ── Client profile auto-fill ────────────────────────────────────────────────
 
-document.querySelectorAll('#client-select').forEach(function(select) {
-  select.addEventListener('change', function() {
-    var selected = this.options[this.selectedIndex];
-    var domain = selected.dataset.domain || '';
-    var name = selected.dataset.name || '';
-    var project = selected.dataset.project || '';
-    var cms = selected.dataset.cms || '';
-    var location = selected.dataset.location || '';
+document.querySelectorAll('#client-select').forEach((select) => {
+  select.addEventListener('change', function () {
+    const selected = this.options[this.selectedIndex];
+    const domain = selected.dataset.domain || '';
+    const name = selected.dataset.name || '';
+    const project = selected.dataset.project || '';
+    const cms = selected.dataset.cms || '';
+    const location = selected.dataset.location || '';
 
     // Audit page: fill URL
-    var urlField = document.getElementById('url');
+    const urlField = document.getElementById('url');
     if (urlField && domain) {
       urlField.value = 'https://' + domain;
     }
 
     // Keywords page: fill keyword (domain as seed), location
-    var keywordField = document.getElementById('keyword');
+    const keywordField = document.getElementById('keyword');
     if (keywordField && domain) {
       keywordField.value = domain;
     }
-    var locationField = document.getElementById('location');
+    const locationField = document.getElementById('location');
     if (locationField && location) {
       locationField.value = location;
     }
 
     // AI Visibility + Domain Overview pages: fill domain field
-    var domainField = document.getElementById('domain');
+    const domainField = document.getElementById('domain');
     if (domainField && domain) {
       domainField.value = domain;
     }
-    var brandQueryField = document.getElementById('brand_query');
+    const brandQueryField = document.getElementById('brand_query');
     if (brandQueryField && name) {
       brandQueryField.value = name;
     }
 
     // Content guide page: fill all fields
-    var nameField = document.getElementById('client_name');
+    const nameField = document.getElementById('client_name');
     if (nameField && name) nameField.value = name;
-    var domainField = document.getElementById('client_domain');
-    if (domainField && domain) domainField.value = domain;
-    var projectField = document.getElementById('project_name');
+    const clientDomainField = document.getElementById('client_domain');
+    if (clientDomainField && domain) clientDomainField.value = domain;
+    const projectField = document.getElementById('project_name');
     if (projectField && project) projectField.value = project;
-    var cmsField = document.getElementById('cms');
+    const cmsField = document.getElementById('cms');
     if (cmsField && cms) cmsField.value = cms;
   });
 });
 
 // ── Loading state on form submit ────────────────────────────────────────────
 
-document.querySelectorAll('form').forEach(function(form) {
-  form.addEventListener('submit', function() {
-    var btn = form.querySelector('button[type=submit]');
+document.querySelectorAll('form').forEach((form) => {
+  form.addEventListener('submit', () => {
+    const btn = form.querySelector('button[type=submit]');
     if (btn) {
       btn.disabled = true;
       btn.classList.add('loading');
@@ -92,27 +175,58 @@ document.querySelectorAll('form').forEach(function(form) {
   });
 });
 
+// Re-enable submit buttons when navigating back to the page (e.g. after a
+// server error). The pageshow event fires when a page is restored from the
+// bfcache, which the unload/load pair does not reliably cover.
+window.addEventListener('pageshow', () => {
+  document.querySelectorAll('button[type=submit].loading').forEach((btn) => {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+  });
+});
+
+// ── Client delete confirmation ──────────────────────────────────────────────
+
+document.addEventListener('submit', (e) => {
+  const form = e.target.closest('.delete-client-form');
+  if (!form) return;
+
+  const clientName = form.dataset.confirmName || 'this client';
+  if (!confirm('Delete "' + clientName + '"? This cannot be undone.')) {
+    e.preventDefault();
+  }
+});
+
 // ── Sortable table ───────────────────────────────────────────────────────────
 
-document.querySelectorAll('.sortable-table').forEach(function(table) {
-  var headers = table.querySelectorAll('th.sortable');
-  headers.forEach(function(th) {
-    th.addEventListener('click', function() {
-      var col = parseInt(th.dataset.col);
-      var isNum = th.dataset.type === 'number';
-      var asc = th.classList.contains('asc') ? false : true;
+document.querySelectorAll('.sortable-table').forEach((table) => {
+  const headers = table.querySelectorAll('th.sortable');
 
-      headers.forEach(function(h) { h.classList.remove('asc', 'desc'); });
+  headers.forEach((th) => {
+    // Make sortable headers keyboard-focusable
+    th.setAttribute('tabindex', '0');
+    th.setAttribute('aria-sort', 'none');
+
+    const sortColumn = () => {
+      const col = parseInt(th.dataset.col, 10);
+      const isNum = th.dataset.type === 'number';
+      const asc = !th.classList.contains('asc');
+
+      headers.forEach((h) => {
+        h.classList.remove('asc', 'desc');
+        h.setAttribute('aria-sort', 'none');
+      });
       th.classList.add(asc ? 'asc' : 'desc');
+      th.setAttribute('aria-sort', asc ? 'ascending' : 'descending');
 
-      var tbody = table.querySelector('tbody');
-      var rows = Array.from(tbody.querySelectorAll('tr'));
+      const tbody = table.querySelector('tbody');
+      const rows = Array.from(tbody.querySelectorAll('tr'));
 
-      rows.sort(function(a, b) {
-        var cellA = a.cells[col];
-        var cellB = b.cells[col];
-        var va = (cellA.dataset.sort !== undefined ? cellA.dataset.sort : cellA.textContent).trim();
-        var vb = (cellB.dataset.sort !== undefined ? cellB.dataset.sort : cellB.textContent).trim();
+      rows.sort((a, b) => {
+        const cellA = a.cells[col];
+        const cellB = b.cells[col];
+        let va = (cellA.dataset.sort !== undefined ? cellA.dataset.sort : cellA.textContent).trim();
+        let vb = (cellB.dataset.sort !== undefined ? cellB.dataset.sort : cellB.textContent).trim();
 
         if (isNum) {
           va = parseFloat(va) || 0;
@@ -122,7 +236,17 @@ document.querySelectorAll('.sortable-table').forEach(function(table) {
         return asc ? va.localeCompare(vb) : vb.localeCompare(va);
       });
 
-      rows.forEach(function(r) { tbody.appendChild(r); });
+      rows.forEach((r) => { tbody.appendChild(r); });
+    };
+
+    th.addEventListener('click', sortColumn);
+
+    // Allow sorting via keyboard (Enter or Space)
+    th.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        sortColumn();
+      }
     });
   });
 });

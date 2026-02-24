@@ -2,11 +2,18 @@
 Shared python-docx utility functions extracted from the original generators.
 Import these in all report generator modules instead of duplicating them.
 """
+import io
+import os
+import logging
+import zipfile
+from docx import Document
 from docx.shared import Pt, RGBColor, Cm
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.oxml.ns import qn, nsdecls
 from docx.oxml import parse_xml
+
+logger = logging.getLogger(__name__)
 
 # Brand colours
 BLACK = RGBColor(26, 26, 26)
@@ -19,6 +26,77 @@ GREEN = RGBColor(22, 120, 50)
 AMBER = RGBColor(180, 120, 20)
 RULE_BLUE = RGBColor(0, 114, 187)
 TIP_AMBER = RGBColor(200, 150, 30)
+
+# Path to Numiko .dotx template
+_BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_NUMIKO_TEMPLATE = os.path.join(_BASE_DIR, 'fonts', 'numiko_template.dotx')
+
+# Content type strings
+_TEMPLATE_CT = 'application/vnd.openxmlformats-officedocument.wordprocessingml.template.main+xml'
+_DOCUMENT_CT = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml'
+
+
+def _dotx_to_docx_stream(dotx_path: str) -> io.BytesIO:
+    """Convert a .dotx template to an in-memory .docx stream.
+
+    python-docx rejects .dotx files because their content type is
+    '...template.main+xml' instead of '...document.main+xml'.
+    This copies the zip, rewriting [Content_Types].xml to swap the
+    content type so python-docx accepts it.
+    """
+    buf = io.BytesIO()
+    with zipfile.ZipFile(dotx_path, 'r') as zin, \
+         zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zout:
+        for item in zin.infolist():
+            data = zin.read(item.filename)
+            if item.filename == '[Content_Types].xml':
+                data = data.replace(
+                    _TEMPLATE_CT.encode('utf-8'),
+                    _DOCUMENT_CT.encode('utf-8'),
+                )
+            zout.writestr(item, data)
+    buf.seek(0)
+    return buf
+
+
+def create_document() -> Document:
+    """Create a new Document using the Numiko branded .dotx template.
+
+    The template provides branded styles, headers, footers and fonts.
+    Falls back to a blank Document if the template is not found, applying
+    basic Calibri styling as before.
+    """
+    if os.path.exists(_NUMIKO_TEMPLATE):
+        try:
+            logger.info('Creating document from Numiko template: %s', _NUMIKO_TEMPLATE)
+            stream = _dotx_to_docx_stream(_NUMIKO_TEMPLATE)
+            doc = Document(stream)
+            # Remove placeholder body content the template may contain,
+            # but preserve sectPr (section properties) which link to
+            # headers/footers defined in the section rels.
+            body = doc.element.body
+            sect_pr = body.find(qn('w:sectPr'))
+            for child in list(body):
+                if child is not sect_pr:
+                    body.remove(child)
+            # Add a single empty paragraph so the doc is valid
+            doc.add_paragraph()
+            # Remove that paragraph's text (it's just a structural anchor)
+            if doc.paragraphs:
+                doc.paragraphs[0].clear()
+            return doc
+        except Exception:
+            logger.warning('Failed to load Numiko template — falling back to blank document',
+                           exc_info=True)
+
+    logger.info('Using blank document with Calibri defaults')
+    doc = Document()
+    # Apply basic styling fallback
+    style = doc.styles['Normal']
+    style.font.name = 'Calibri'
+    style.font.size = Pt(10)
+    style.font.color.rgb = DARK
+    return doc
 
 
 def set_cell_shading(cell, color_hex):

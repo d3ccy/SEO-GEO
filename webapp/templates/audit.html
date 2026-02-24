@@ -10,10 +10,11 @@
 {% include 'partials/how_to_audit.html' %}
 
 <form method="POST" id="audit-form" class="form-card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   {% if clients %}
   <div class="form-group">
     <label for="client-select">Load client profile</label>
-    <select id="client-select" data-clients='{{ clients | tojson }}' data-target-field="url" data-domain-prefix="https://">
+    <select id="client-select" data-clients="{{ clients | tojson | e }}" data-target-field="url" data-domain-prefix="https://">
       <option value="">— Select a client —</option>
       {% for c in clients %}
         <option value="{{ c.id }}" data-domain="{{ c.domain }}">{{ c.name }}{% if c.domain %} ({{ c.domain }}){% endif %}</option>
@@ -171,6 +172,7 @@
     <h3>Download Full Report</h3>
     <p>Generate a branded Word document with full analysis, recommendations, and the Princeton GEO method guide.</p>
     <form method="POST" action="/audit-report" id="report-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="url" value="{{ result.url }}">
       <div class="report-form-row">
         <div class="form-group">

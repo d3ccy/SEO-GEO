@@ -1,7 +1,4 @@
-import sys
 import os
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from report_generators.content_guide import build_content_guide
 from report_generators.geo_audit_report import build_geo_audit_report

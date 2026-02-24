@@ -11,16 +11,21 @@ params dict keys:
   logo_path     - absolute path to logo image (optional, falls back to agency logo)
 """
 import os
+import logging
 from datetime import datetime
-from docx import Document
 from docx.shared import Pt, Cm
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+from docx import Document
 
 from .docx_helpers import (
     BLACK, DARK, GRAY, LIGHT_GRAY, WHITE, RED, GREEN, RULE_BLUE, TIP_AMBER,
     add_styled_para, add_heading, add_bullet, add_table,
     add_callout_box, add_tip_box, add_example_box, add_golden_rule, add_checklist_item,
+    create_document,
 )
+
+logger = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DEFAULT_LOGO = os.path.join(BASE_DIR, 'fonts', 'numiko_logo.png')
@@ -34,12 +39,7 @@ def build_content_guide(params: dict) -> Document:
     cms = params.get('cms') or 'Drupal'
     logo_path = params.get('logo_path') or DEFAULT_LOGO
 
-    doc = Document()
-
-    style = doc.styles['Normal']
-    style.font.name = 'Calibri'
-    style.font.size = Pt(10)
-    style.font.color.rgb = DARK
+    doc = create_document()
 
     for section in doc.sections:
         section.top_margin = Cm(2)

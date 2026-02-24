@@ -1,19 +1,29 @@
-import sys
-import os
+import logging
+import re
 from urllib.parse import urlparse
-
-_SCRIPTS_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'scripts')
-sys.path.insert(0, os.path.abspath(_SCRIPTS_DIR))
 
 from dataforseo_api import api_post, get_result, format_count
 
+logger = logging.getLogger(__name__)
+
 
 def _clean_domain(domain: str) -> str:
-    """Strip protocol/path from domain input."""
+    """Strip protocol/path from domain input and validate."""
     domain = domain.strip().lower()
+    if not domain:
+        raise ValueError('Domain must not be empty.')
+    # Reject shell metacharacters, spaces, and other dangerous input
+    if re.search(r'[;&|`$\s]', domain):
+        raise ValueError(f'Invalid domain: {domain!r}')
     if domain.startswith('http'):
-        domain = urlparse(domain).netloc
-    domain = domain.lstrip('www.')
+        parsed = urlparse(domain)
+        if parsed.scheme not in ('http', 'https'):
+            raise ValueError(f'Unsupported URL scheme: {parsed.scheme}')
+        domain = parsed.netloc
+    if domain.startswith('www.'):
+        domain = domain[4:]
+    if not domain:
+        raise ValueError('Could not extract a valid domain.')
     return domain
 
 
@@ -52,8 +62,9 @@ def run_domain_overview(domain: str, location_code: int = 2826) -> dict:
                 'pos_1_3': metrics.get('pos_1_3', 0),
                 'pos_4_10': metrics.get('pos_4_10', 0),
             }
-    except Exception as e:
-        result['errors'].append(f'Domain Rank Overview: {e}')
+    except (RuntimeError, KeyError, TypeError, ConnectionError) as exc:
+        logger.warning('Domain Rank Overview failed: %s', exc)
+        result['errors'].append(f'Domain Rank Overview: {exc}')
 
     # ── Section 2: Top Ranking Keywords ───────────────────────────────────
     try:
@@ -79,8 +90,9 @@ def run_domain_overview(domain: str, location_code: int = 2826) -> dict:
                     'volume_raw': ki.get('search_volume', 0) or 0,
                     'url': sr.get('relative_url', '') or sr.get('url', ''),
                 })
-    except Exception as e:
-        result['errors'].append(f'Ranked Keywords: {e}')
+    except (RuntimeError, KeyError, TypeError, ConnectionError) as exc:
+        logger.warning('Ranked Keywords fetch failed: %s', exc)
+        result['errors'].append(f'Ranked Keywords: {exc}')
 
     # ── Section 3: Top Competitors ─────────────────────────────────────────
     try:
@@ -101,8 +113,9 @@ def run_domain_overview(domain: str, location_code: int = 2826) -> dict:
                     'relevance': round(item.get('relevance', 0), 3),
                     'domain_rank': item.get('domain_rank'),
                 })
-    except Exception as e:
-        result['errors'].append(f'Competitors: {e}')
+    except (RuntimeError, KeyError, TypeError, ConnectionError) as exc:
+        logger.warning('Competitors fetch failed: %s', exc)
+        result['errors'].append(f'Competitors: {exc}')
 
     # ── Section 4: Backlinks Summary ──────────────────────────────────────
     try:
@@ -118,9 +131,10 @@ def run_domain_overview(domain: str, location_code: int = 2826) -> dict:
                 'referring_domains': item.get('referring_domains', 0),
                 'backlinks': item.get('backlinks', 0),
                 'nofollow': item.get('nofollow', 0),
-                'dofollow': item.get('backlinks', 0) - item.get('nofollow', 0),
+                'dofollow': (item.get('backlinks') or 0) - (item.get('nofollow') or 0),
             }
-    except Exception as e:
-        result['errors'].append(f'Backlinks: {e}')
+    except (RuntimeError, KeyError, TypeError, ConnectionError) as exc:
+        logger.warning('Backlinks fetch failed: %s', exc)
+        result['errors'].append(f'Backlinks: {exc}')
 
     return result

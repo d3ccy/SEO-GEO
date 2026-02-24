@@ -32,8 +32,9 @@
         <td>{{ c.notes or '—' }}</td>
         <td class="actions">
           <a href="{{ url_for('client_edit', client_id=c.id) }}" class="btn btn-sm">Edit</a>
-          <form method="POST" action="{{ url_for('client_delete', client_id=c.id) }}" class="inline-form"
-                onsubmit="return confirm('Delete {{ c.name }}?')">
+          <form method="POST" action="{{ url_for('client_delete', client_id=c.id) }}" class="inline-form delete-client-form"
+                data-confirm-name="{{ c.name | e }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-sm btn-danger">Delete</button>
           </form>
         </td>

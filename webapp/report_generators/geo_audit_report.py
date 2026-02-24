@@ -18,16 +18,20 @@ audit dict keys (from audit_service.run_audit()):
   backlinks_rank, referring_domains, total_backlinks
 """
 import os
+import logging
 from datetime import datetime
-from docx import Document
 from docx.shared import Pt, Cm
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+from docx import Document
 
 from .docx_helpers import (
     BLACK, DARK, GRAY, LIGHT_GRAY, WHITE, RED, GREEN, AMBER,
     add_styled_para, add_heading, add_bullet, add_table,
-    add_callout_box, set_cell_shading,
+    add_callout_box, set_cell_shading, create_document,
 )
+
+logger = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DEFAULT_LOGO = os.path.join(BASE_DIR, 'fonts', 'numiko_logo.png')
@@ -93,12 +97,7 @@ def build_geo_audit_report(params: dict, audit: dict) -> Document:
     from docx.shared import RGBColor
     SCORE_COLOR = RGBColor(*score_rgb)
 
-    doc = Document()
-
-    style = doc.styles['Normal']
-    style.font.name = 'Calibri'
-    style.font.size = Pt(10)
-    style.font.color.rgb = DARK
+    doc = create_document()
 
     for section in doc.sections:
         section.top_margin = Cm(2)

@@ -1,12 +1,10 @@
-import sys
-import os
-
-_SCRIPTS_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'scripts')
-sys.path.insert(0, os.path.abspath(_SCRIPTS_DIR))
+import logging
 
 # dataforseo_api imports credential.py which must be on path too
 import dataforseo_api as _dfs_api
 from dataforseo_api import api_post, get_result, format_count
+
+logger = logging.getLogger(__name__)
 
 
 def run_keyword_research(keyword: str, location_code: int = 2826, limit: int = 20) -> dict:
@@ -64,8 +62,8 @@ def run_keyword_research(keyword: str, location_code: int = 2826, limit: int = 2
                 kd = diff_map.get(kw['keyword'])
                 if kd is not None:
                     kw['difficulty'] = kd
-    except Exception:
-        pass  # gracefully keep existing difficulty values
+    except (RuntimeError, KeyError, TypeError, ConnectionError) as exc:
+        logger.warning('Bulk keyword difficulty failed: %s', exc)
 
     # ── Search intent ─────────────────────────────────────────────────────────
     try:
@@ -86,8 +84,8 @@ def run_keyword_research(keyword: str, location_code: int = 2826, limit: int = 2
                     intent_map[kw_text] = main_intent
             for kw in keywords:
                 kw['intent'] = intent_map.get(kw['keyword'])
-    except Exception:
-        pass  # gracefully leave intent as None
+    except (RuntimeError, KeyError, TypeError, ConnectionError) as exc:
+        logger.warning('Search intent fetch failed: %s', exc)
 
     # ── AI search volume ──────────────────────────────────────────────────────
     try:
@@ -104,8 +102,8 @@ def run_keyword_research(keyword: str, location_code: int = 2826, limit: int = 2
                 av = ai_map.get(kw['keyword'])
                 kw['ai_volume'] = format_count(av) if av else None
                 kw['ai_volume_raw'] = av or 0
-    except Exception:
-        pass  # AI volume not available on all plans
+    except (RuntimeError, KeyError, TypeError, ConnectionError) as exc:
+        logger.warning('AI search volume fetch failed: %s', exc)
 
     # Normalise difficulty display
     for kw in keywords:

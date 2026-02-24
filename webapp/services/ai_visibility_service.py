@@ -1,10 +1,8 @@
-import sys
-import os
-
-_SCRIPTS_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'scripts')
-sys.path.insert(0, os.path.abspath(_SCRIPTS_DIR))
+import logging
 
 from dataforseo_api import api_post, get_result, format_count
+
+logger = logging.getLogger(__name__)
 
 
 def run_ai_visibility(domain: str, brand_query: str, location_code: int = 2826) -> dict:
@@ -64,8 +62,9 @@ def run_ai_visibility(domain: str, brand_query: str, location_code: int = 2826) 
             result['mentions'] = mentions_list
         else:
             result['mentions'] = []
-    except Exception as e:
-        result['errors'].append(f'LLM Mentions: {e}')
+    except (RuntimeError, KeyError, TypeError, ConnectionError) as exc:
+        logger.warning('LLM Mentions fetch failed: %s', exc)
+        result['errors'].append(f'LLM Mentions: {exc}')
 
     # ── Panel 2: ChatGPT Search Scraper ────────────────────────────────────
     # Correct endpoint: ai_optimization/chat_gpt/llm_scraper/live/advanced
@@ -108,8 +107,9 @@ def run_ai_visibility(domain: str, brand_query: str, location_code: int = 2826) 
                 'sources': sources[:10],
                 'domain_mentioned': domain_mentioned,
             }
-    except Exception as e:
-        result['errors'].append(f'ChatGPT Search: {e}')
+    except (RuntimeError, KeyError, TypeError, ConnectionError) as exc:
+        logger.warning('ChatGPT Search fetch failed: %s', exc)
+        result['errors'].append(f'ChatGPT Search: {exc}')
 
     # ── Panel 3: Multi-LLM Responses ───────────────────────────────────────
     # Each platform has its own endpoint; request uses 'user_prompt' + 'model_name'
@@ -151,8 +151,9 @@ def run_ai_visibility(domain: str, brand_query: str, location_code: int = 2826) 
                         'response': response_text,
                         'domain_mentioned': mentioned,
                     })
-        except Exception as e:
-            result['errors'].append(f'{platform_name}: {e}')
+        except (RuntimeError, KeyError, TypeError, ConnectionError) as exc:
+            logger.warning('%s LLM response fetch failed: %s', platform_name, exc)
+            result['errors'].append(f'{platform_name}: {exc}')
 
     result['llm_responses'] = llm_data if llm_data else []
 
