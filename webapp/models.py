@@ -4,6 +4,7 @@ SQLAlchemy models for user authentication and management.
 from datetime import datetime, timezone
 
 from flask_login import UserMixin
+from sqlalchemy.orm import validates
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from extensions import db
@@ -26,6 +27,13 @@ class User(UserMixin, db.Model):
     activated_at = db.Column(db.DateTime, nullable=True)
     last_login = db.Column(db.DateTime, nullable=True)
     deactivated_at = db.Column(db.DateTime, nullable=True)
+
+    # ── Email normalisation ───────────────────────────────────────────────
+
+    @validates('email')
+    def _normalize_email(self, _key, value):
+        """Always store emails as lowercase."""
+        return value.strip().lower() if value else value
 
     # ── Password helpers ─────────────────────────────────────────────────
 

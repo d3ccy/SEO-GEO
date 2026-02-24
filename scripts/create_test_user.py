@@ -18,11 +18,18 @@ from app import app
 from extensions import db
 from models import User
 
-EMAIL = 'GEOtest@numiko.com'
+EMAIL = 'geotest@numiko.com'  # lowercase — login/register normalise to lower
 NAME = 'GEO Test'
 PASSWORD = 'Tk9$mPx2!vR4geo'
 
 with app.app_context():
+    # Fix any existing mixed-case version first
+    mixed = User.query.filter(db.func.lower(User.email) == EMAIL).first()
+    if mixed and mixed.email != EMAIL:
+        print(f'Fixing email case: {mixed.email} -> {EMAIL}')
+        mixed.email = EMAIL
+        db.session.commit()
+
     existing = User.query.filter_by(email=EMAIL).first()
     if existing:
         print(f'User {EMAIL} already exists (id={existing.id}, active={existing.is_active})')
@@ -31,6 +38,10 @@ with app.app_context():
             existing.activated_at = datetime.now(timezone.utc)
             db.session.commit()
             print('  -> Activated existing account.')
+        # Reset password to known value
+        existing.set_password(PASSWORD)
+        db.session.commit()
+        print('  -> Password reset.')
         sys.exit(0)
 
     user = User(
