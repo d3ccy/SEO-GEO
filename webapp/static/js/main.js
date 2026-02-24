@@ -252,3 +252,115 @@ document.querySelectorAll('.sortable-table').forEach((table) => {
     });
   });
 });
+
+// ── Quick-create client modal ────────────────────────────────────────────────
+
+(function () {
+  const modal = document.getElementById('add-client-modal');
+  const form  = document.getElementById('add-client-form');
+  if (!modal || !form) return;
+
+  const errorDiv  = modal.querySelector('.modal-error');
+  const submitBtn = form.querySelector('button[type=submit]');
+
+  // ── Inject "+ New client" button next to every #client-select ────────────
+  document.querySelectorAll('#client-select').forEach((select) => {
+    // Wrap the select in a flex row so button sits alongside it
+    const row = document.createElement('div');
+    row.className = 'client-select-row';
+    select.parentNode.insertBefore(row, select);
+    row.appendChild(select);
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn btn-secondary btn-small';
+    btn.textContent = '+ New client';
+    row.appendChild(btn);
+
+    btn.addEventListener('click', openModal);
+  });
+
+  // ── Open / close helpers ──────────────────────────────────────────────────
+  function openModal() {
+    modal.removeAttribute('hidden');
+    form.reset();
+    if (errorDiv) errorDiv.textContent = '';
+    const nameInput = form.querySelector('#new-client-name');
+    if (nameInput) nameInput.focus();
+  }
+
+  function closeModal() {
+    modal.setAttribute('hidden', '');
+  }
+
+  // Close via × button or Cancel button
+  modal.querySelectorAll('.modal-close, .modal-cancel').forEach((el) => {
+    el.addEventListener('click', closeModal);
+  });
+
+  // Close by clicking the overlay backdrop (but not the dialog itself)
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  // Close on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modal.hasAttribute('hidden')) closeModal();
+  });
+
+  // ── Form submit via fetch ─────────────────────────────────────────────────
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault(); // stop the page-level loading-state handler acting on this form
+
+    const csrfToken = document.querySelector('meta[name=csrf-token]');
+    const formData  = new FormData(form);
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving…';
+    if (errorDiv) errorDiv.textContent = '';
+
+    try {
+      const resp = await fetch('/api/clients/quick-create', {
+        method: 'POST',
+        headers: csrfToken ? { 'X-CSRFToken': csrfToken.content } : {},
+        body: formData,
+      });
+
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        if (errorDiv) errorDiv.textContent = data.error || 'Failed to create client.';
+        return;
+      }
+
+      const client = data.client;
+
+      // Add the new client as an option in every #client-select on the page
+      // and immediately select it, triggering the auto-fill change handler.
+      document.querySelectorAll('#client-select').forEach((select) => {
+        const opt = document.createElement('option');
+        opt.value            = client.id;
+        opt.dataset.domain   = client.domain        || '';
+        opt.dataset.name     = client.name          || '';
+        opt.dataset.project  = client.project_name  || '';
+        opt.dataset.cms      = client.cms            || '';
+        opt.dataset.location = String(client.location_code || '');
+        opt.textContent      = client.name + (client.domain ? ` (${client.domain})` : '');
+        select.appendChild(opt);
+
+        // Select the new client and trigger the auto-fill handler
+        select.value = client.id;
+        select.dispatchEvent(new Event('change'));
+      });
+
+      closeModal();
+
+    } catch (err) {
+      if (errorDiv) errorDiv.textContent = 'Network error — please try again.';
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.classList.remove('loading');
+      submitBtn.textContent = 'Create Client';
+    }
+  });
+}());

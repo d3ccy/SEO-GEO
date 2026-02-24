@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 # Put webapp/ on path so local imports work regardless of where flask is launched
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from flask import Flask, render_template, request, redirect, url_for, send_file, flash, Response
+from flask import Flask, render_template, request, redirect, url_for, send_file, flash, Response, jsonify
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -486,6 +486,30 @@ def keywords_export():
         mimetype='text/csv; charset=utf-8',
         headers={'Content-Disposition': f'attachment; filename="keywords-{safe_keyword}.csv"'},
     )
+
+
+@app.route('/api/clients/quick-create', methods=['POST'])
+@login_required
+@limiter.limit("20 per minute")
+def api_client_quick_create():
+    """AJAX endpoint: create a client and return JSON for the modal."""
+    name = request.form.get('name', '').strip()
+    if not name:
+        return jsonify({'error': 'Client name is required.'}), 400
+
+    client = {
+        'id': uuid.uuid4().hex,
+        'name': name,
+        'domain': request.form.get('domain', '').strip(),
+        'project_name': request.form.get('project_name', '').strip(),
+        'cms': '',
+        'location_code': DEFAULT_LOCATION_CODE,
+        'notes': '',
+        'created': datetime.now().isoformat(),
+    }
+    save_client(client)
+    logger.info("Quick-created client: %s (%s)", client['name'], client['id'])
+    return jsonify({'client': client}), 201
 
 
 @app.route('/health')
