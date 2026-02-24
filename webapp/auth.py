@@ -83,21 +83,29 @@ def login():
 
         user = User.query.filter_by(email=email).first()
 
-        if user is None or not user.check_password(password):
+        if user is None:
+            print(f'[LOGIN] FAIL user not found: {email}')
+            flash('Invalid email or password.', 'error')
+            return render_template('login.html', email=email)
+
+        if not user.check_password(password):
+            print(f'[LOGIN] FAIL wrong password for: {email} (id={user.id}, active={user.is_active_user})')
             flash('Invalid email or password.', 'error')
             return render_template('login.html', email=email)
 
         if not user.is_active:
             if user.deactivated_at:
+                print(f'[LOGIN] FAIL account revoked: {email}')
                 flash('Your account has been revoked. Contact an administrator.', 'error')
             else:
+                print(f'[LOGIN] FAIL account not activated: {email}')
                 flash('Your account has not been activated yet. Check your email for the activation link.', 'error')
             return render_template('login.html', email=email)
 
         login_user(user, remember=True)
         user.last_login = datetime.now(timezone.utc)
         db.session.commit()
-        logger.info('User logged in: %s', user.email)
+        print(f'[LOGIN] OK: {email}')
 
         next_page = request.args.get('next') or url_for('index')
         return redirect(next_page)
