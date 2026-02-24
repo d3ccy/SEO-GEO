@@ -93,14 +93,13 @@ def _send_via_resend(to_email: str, subject: str, html_body: str) -> bool:
         )
         if resp.status_code in (200, 201):
             data = resp.json()
-            logger.info('Activation email sent via Resend to %s (id=%s)',
-                        to_email, data.get('id', '?'))
+            print(f'[EMAIL] Sent "{subject}" to {to_email} (id={data.get("id", "?")})')
             return True
         else:
-            logger.error('Resend API error %s: %s', resp.status_code, resp.text)
+            print(f'[EMAIL] Resend API error {resp.status_code} sending to {to_email}: {resp.text}')
             return False
-    except Exception:
-        logger.exception('Failed to send email via Resend to %s', to_email)
+    except Exception as exc:
+        print(f'[EMAIL] Exception sending to {to_email}: {exc}')
         return False
 
 
@@ -170,15 +169,12 @@ def send_password_reset_email(user, token: str) -> None:
     """
     reset_url = url_for('auth.reset_password', token=token, _external=True)
 
-    # ── Console output (always) ───────────────────────────────────────────
-    logger.info(
-        '\n'
-        '╔══════════════════════════════════════════════════════════════╗\n'
-        '║  PASSWORD RESET LINK for %s\n'
-        '║  %s\n'
-        '╚══════════════════════════════════════════════════════════════╝',
-        user.email,
-        reset_url,
+    # ── Console output (always — appears in Railway deploy logs) ─────────
+    print(
+        f'\n╔══════════════════════════════════════════════════════════════╗\n'
+        f'║  PASSWORD RESET LINK for {user.email}\n'
+        f'║  {reset_url}\n'
+        f'╚══════════════════════════════════════════════════════════════╝'
     )
 
     if Config.RESEND_API_KEY:

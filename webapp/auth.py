@@ -218,12 +218,19 @@ def forgot_password():
         email = request.form.get('email', '').strip().lower()
         if email:
             user = User.query.filter_by(email=email).first()
-            # Only send if the account exists and is active; silently skip
-            # everything else so we never reveal whether an address is registered.
-            if user and user.is_active:
+            if user is None:
+                # Logged at print level so it appears in Railway deploy logs;
+                # the user-facing flash message is always generic.
+                print(f'[PASSWORD RESET] No account for: {email}')
+            elif not user.is_active:
+                print(f'[PASSWORD RESET] Account not active for: {email} '
+                      f'(active={user.is_active_user}, revoked={bool(user.deactivated_at)})')
+            else:
                 token = generate_password_reset_token(email)
                 send_password_reset_email(user, token)
-                logger.info('[PASSWORD RESET] Link sent for: %s', email)
+                print(f'[PASSWORD RESET] Link sent for: {email}')
+        else:
+            print('[PASSWORD RESET] Empty email submitted')
 
         flash('If an account with that email exists, a reset link has been sent. '
               'Check your inbox (link expires in 15 minutes).')
