@@ -170,7 +170,7 @@ DEPLOY.md                    Full Railway + Render deployment guide
 | GET | `/download/<filename>` | ✓ | Serve generated DOCX from OUTPUT_DIR (path traversal blocked) |
 | GET | `/health` | ✗ | `{"status": "ok"}` — used by Railway health checks |
 
-**Auth column:** ✓ = protected by `@requires_auth` when `APP_PASSWORD` env var is set.
+**Auth column:** ✓ = protected by `@login_required` (per-user session auth).
 
 ---
 
@@ -357,7 +357,10 @@ Success status: `tasks[0].status_code == 20000`
 | `DATAFORSEO_LOGIN` | For API tools | — | DataForSEO account email |
 | `DATAFORSEO_PASSWORD` | For API tools | — | DataForSEO account password |
 | `SECRET_KEY` | Yes (production) | `dev-secret-change-in-prod` | Flask session secret — use `openssl rand -hex 32` |
-| `APP_PASSWORD` | No | `""` (disabled) | Enables HTTP Basic Auth on all routes. Any username accepted. |
+| `ADMIN_EMAIL` | Recommended | `""` | Email auto-promoted to admin on registration |
+| `RESEND_API_KEY` | No | `""` | Resend API key for sending activation emails |
+| `RESEND_FROM_EMAIL` | No | `Numiko <noreply@numiko.com>` | Sender address for activation emails |
+| `ALLOWED_EMAIL_DOMAIN` | No | `numiko.com` | Only emails from this domain can register |
 | `OUTPUT_DIR` | No | `/tmp/seo-geo-reports` | Where DOCX files are written |
 | `PORT` | Auto | `5000` | Set automatically by Railway; Gunicorn binds `$PORT` |
 
@@ -584,8 +587,8 @@ Original code used `sys.exit(1)` on API errors, which silently kills a Gunicorn 
 **Flat JSON file for client storage**
 No database dependency — Railway and Render free tiers work without any database addon. Trade-off: clients are ephemeral on free tiers (reset on redeploy). A future enhancement could use Railway Postgres.
 
-**HTTP Basic Auth via a decorator factory, not Flask-Login**
-Simplicity. The app is an internal team tool. Any username + the shared `APP_PASSWORD` grants access. Disabling auth (empty `APP_PASSWORD`) makes local development frictionless.
+**Per-user authentication via Flask-Login**
+Individual accounts with @numiko.com email restriction, email activation via Resend, and admin user management at `/admin/users`. Sessions are cookie-based with `HttpOnly` and `SameSite=Lax` flags.
 
 **Gunicorn with 2 workers, 120s timeout**
 AI Visibility checks make up to 6 sequential LLM API calls; each can take 10–15s. 120s timeout prevents Gunicorn from killing slow but legitimate requests.

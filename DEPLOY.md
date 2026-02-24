@@ -41,7 +41,9 @@ In Railway, go to your project → **Variables** tab → add these:
 | `DATAFORSEO_LOGIN` | Your DataForSEO login email |
 | `DATAFORSEO_PASSWORD` | Your DataForSEO password |
 | `SECRET_KEY` | Any long random string (e.g. `openssl rand -hex 32`) |
-| `APP_PASSWORD` | A password to protect the app (leave blank to disable auth) |
+| `ADMIN_EMAIL` | Your @numiko.com email (auto-promoted to admin on registration) |
+| `RESEND_API_KEY` | Resend API key for activation emails (optional) |
+| `RESEND_FROM_EMAIL` | Sender address, e.g. `Numiko <noreply@numiko.com>` (optional) |
 | `OUTPUT_DIR` | `/tmp/seo-geo-reports` |
 
 > **Note:** Railway provides `$PORT` automatically — the `Procfile` already uses it.
@@ -119,7 +121,7 @@ Cloudflare handles SSL automatically. Set the Cloudflare SSL/TLS mode to **Full*
 ├── webapp/                 # Flask application
 │   ├── app.py              # Routes
 │   ├── config.py           # Config (reads env vars)
-│   ├── auth.py             # HTTP Basic Auth
+│   ├── auth.py             # User registration, login, and admin routes
 │   ├── client_store.py     # Client profile storage
 │   ├── services/           # Business logic
 │   ├── report_generators/  # DOCX generators
@@ -141,7 +143,9 @@ Cloudflare handles SSL automatically. Set the Cloudflare SSL/TLS mode to **Full*
 | `DATAFORSEO_LOGIN` | Yes (for keywords) | DataForSEO account email |
 | `DATAFORSEO_PASSWORD` | Yes (for keywords) | DataForSEO account password |
 | `SECRET_KEY` | Yes | Flask session secret — set to any long random string |
-| `APP_PASSWORD` | No | If set, protects all pages with HTTP Basic Auth |
+| `ADMIN_EMAIL` | Recommended | Email auto-promoted to admin on registration |
+| `RESEND_API_KEY` | No | Resend API key for activation emails |
+| `RESEND_FROM_EMAIL` | No | Sender address (default: `Numiko <noreply@numiko.com>`) |
 | `OUTPUT_DIR` | No | Where generated reports are stored (default: `/tmp/seo-geo-reports`) |
 | `PORT` | Auto | Set automatically by Railway/Render |
 

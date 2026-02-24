@@ -15,7 +15,6 @@ MAX_KEYWORD_EXPORT_LIMIT = 50
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', '')
-    APP_PASSWORD = os.environ.get('APP_PASSWORD', '')  # legacy — kept for reference
 
     DATAFORSEO_LOGIN = os.environ.get('DATAFORSEO_LOGIN', '')
     DATAFORSEO_PASSWORD = os.environ.get('DATAFORSEO_PASSWORD', '')

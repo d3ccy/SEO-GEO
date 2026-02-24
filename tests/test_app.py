@@ -1,23 +1,26 @@
 #!/usr/bin/env python3
 """
-Numiko SEO-GEO Toolkit — automated test suite
+Numiko SEO-GEO Toolkit — automated integration test suite
 Run after every deploy: python tests/test_app.py [base_url]
 
 Default base_url: https://web-production-843708.up.railway.app
 Pass a local URL to test locally: python tests/test_app.py http://localhost:5000
+
+Authentication: The app uses per-user session auth (Flask-Login).
+Tests that require login are skipped unless you provide credentials:
+  python3 tests/test_app.py [base_url] [email] [password]
 """
 import sys
+import re
 import urllib.request
 import urllib.error
 import urllib.parse
 import json
-import time
+import http.cookiejar
 
 BASE_URL = sys.argv[1].rstrip('/') if len(sys.argv) > 1 else "https://web-production-843708.up.railway.app"
-# The app uses HTTP Basic Auth — any username, password must match APP_PASSWORD env var.
-# Pass password as second arg: python3 tests/test_app.py [base_url] [password]
-AUTH_USER = "numiko"
-AUTH_PASS = sys.argv[2] if len(sys.argv) > 2 else ""
+AUTH_EMAIL = sys.argv[2] if len(sys.argv) > 2 else ""
+AUTH_PASS = sys.argv[3] if len(sys.argv) > 3 else ""
 
 PASS = "\033[92m✓\033[0m"
 FAIL = "\033[91m✗\033[0m"
@@ -25,20 +28,19 @@ WARN = "\033[93m⚠\033[0m"
 
 results = []
 
+# Cookie jar to maintain session across requests
+cookie_jar = http.cookiejar.CookieJar()
+opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie_jar))
 
-import base64
 
-def req(path, method="GET", data=None, with_auth=True):
-    """Make a request (optionally authenticated). Returns (status_code, body, headers)."""
+def req(path, method="GET", data=None):
+    """Make a request with session cookies. Returns (status_code, body, headers)."""
     url = BASE_URL + path
     encoded_data = urllib.parse.urlencode(data).encode() if data else None
     r = urllib.request.Request(url, data=encoded_data, method=method)
-    if with_auth and AUTH_PASS:
-        credentials = base64.b64encode(f"{AUTH_USER}:{AUTH_PASS}".encode()).decode()
-        r.add_header("Authorization", f"Basic {credentials}")
     r.add_header("Content-Type", "application/x-www-form-urlencoded")
     try:
-        resp = urllib.request.urlopen(r, timeout=60)
+        resp = opener.open(r, timeout=60)
         body = resp.read().decode("utf-8", errors="ignore")
         return resp.status, body, dict(resp.headers)
     except urllib.error.HTTPError as e:
@@ -50,6 +52,12 @@ def req(path, method="GET", data=None, with_auth=True):
         return e.code, body, dict(e.headers)
     except urllib.error.URLError as e:
         return 0, str(e.reason), {}
+
+
+def _extract_csrf(html):
+    """Extract CSRF token from a page's hidden input."""
+    match = re.search(r'name="csrf_token"\s+value="([^"]+)"', html)
+    return match.group(1) if match else ""
 
 
 def check(name, passed, detail="", skip=False):
@@ -69,6 +77,30 @@ def section(title):
     print("─" * len(title))
 
 
+def login():
+    """Log in via session auth and return True if successful."""
+    if not AUTH_EMAIL or not AUTH_PASS:
+        return False
+
+    # GET the login page to grab the CSRF token
+    status, body, _ = req("/login")
+    if status != 200:
+        return False
+
+    csrf_token = _extract_csrf(body)
+    if not csrf_token:
+        return False
+
+    # POST login
+    status, body, _ = req("/login", method="POST", data={
+        "email": AUTH_EMAIL,
+        "password": AUTH_PASS,
+        "csrf_token": csrf_token,
+    })
+    # Successful login redirects to / (302 -> 200)
+    return status == 200 and "Log In" not in body
+
+
 # ── 1. Health check ──────────────────────────────────────────────────────────
 section("1. Health & availability")
 status, body, _ = req("/health")
@@ -81,23 +113,30 @@ except Exception:
 
 # ── 2. Authentication ─────────────────────────────────────────────────────────
 section("2. Authentication")
-# Without auth header — either 401 (if auth enabled) or 200 (if disabled)
-status_noauth, _, _ = req("/", with_auth=False)
-auth_enabled = status_noauth == 401
-if auth_enabled:
-    check("Unauthenticated request returns 401 (auth enabled)", True, f"status={status_noauth}")
-else:
-    check("Unauthenticated request returns 200 (auth disabled)", status_noauth == 200, f"status={status_noauth}")
+# Without login — should redirect to /login
+status_noauth, body, _ = req("/")
+redirected_to_login = status_noauth == 200 and "Log In" in body
+check("Unauthenticated request redirects to login", redirected_to_login, f"status={status_noauth}")
 
-# With auth — expect 200
-status, body, _ = req("/")
-if auth_enabled and not AUTH_PASS:
-    print(f"  {WARN} Skipping authenticated tests — pass APP_PASSWORD as 2nd arg")
-    print(f"     Usage: python3 tests/test_app.py {BASE_URL} <APP_PASSWORD>")
-    AUTH_OK = False
+# Login page renders
+status, body, _ = req("/login")
+check("GET /login returns 200", status == 200, f"status={status}")
+check("Login page has email field", 'name="email"' in body, "Email field present")
+check("Login page has CSRF token", 'csrf_token' in body, "CSRF token present")
+
+# Register page renders
+status, body, _ = req("/register")
+check("GET /register returns 200", status == 200, f"status={status}")
+check("Register page has @numiko.com hint", "numiko.com" in body, "Domain hint present")
+
+# Log in if credentials provided
+AUTH_OK = False
+if AUTH_EMAIL and AUTH_PASS:
+    AUTH_OK = login()
+    check("Login with credentials succeeds", AUTH_OK, f"email={AUTH_EMAIL}")
 else:
-    check("Authenticated request to / returns 200", status == 200, f"status={status}")
-    AUTH_OK = status == 200
+    print(f"  {WARN} Skipping authenticated tests — provide email and password")
+    print(f"     Usage: python3 tests/test_app.py {BASE_URL} <email> <password>")
 
 # ── 3. Page loads ─────────────────────────────────────────────────────────────
 section("3. Page loads")
@@ -151,7 +190,10 @@ check("ModernEra-Regular.otf served", status == 200, f"status={status}")
 section("5. GEO Audit — example.com")
 if AUTH_OK:
     print("  (this may take ~15s while the audit runs...)")
-    status, body, _ = req("/audit", method="POST", data={"url": "https://example.com"})
+    # Need CSRF token for POST
+    status, body, _ = req("/audit")
+    csrf = _extract_csrf(body)
+    status, body, _ = req("/audit", method="POST", data={"url": "https://example.com", "csrf_token": csrf})
     check("POST /audit with example.com returns 200", status == 200, f"status={status}")
     check("Audit result contains GEO Score", "GEO Score" in body, "Score badge present")
     check("Audit shows Page Title row", "Page Title" in body, "Title row present")
@@ -166,7 +208,9 @@ else:
 # ── 6. Audit with invalid URL ─────────────────────────────────────────────────
 section("6. GEO Audit — error handling")
 if AUTH_OK:
-    status, body, _ = req("/audit", method="POST", data={"url": ""})
+    status, body, _ = req("/audit")
+    csrf = _extract_csrf(body)
+    status, body, _ = req("/audit", method="POST", data={"url": "", "csrf_token": csrf})
     check("POST /audit with empty URL shows error", status == 200 and ("error" in body.lower() or "Please enter" in body), "Error shown")
 else:
     check("POST /audit empty URL error", False, skip=True)
@@ -241,7 +285,9 @@ else:
 section("12. GEO Audit — new fields")
 if AUTH_OK:
     print("  (running audit on example.com for new fields check...)")
-    status, body, _ = req("/audit", method="POST", data={"url": "https://example.com"})
+    status, body, _ = req("/audit")
+    csrf = _extract_csrf(body)
+    status, body, _ = req("/audit", method="POST", data={"url": "https://example.com", "csrf_token": csrf})
     check("Audit result has sitemap URL detail", status == 200, f"status={status}")
     check("Audit template has AI Visibility nav", "AI Visibility" in body, "Nav present in results page")
     check("Dashboard has AI Visibility card", True, "Already checked in page loads")
@@ -252,10 +298,9 @@ else:
 # ── 13. Import safety — no sys.exit in dataforseo_api ─────────────────────────
 section("13. Module safety")
 try:
-    import sys as _sys
     import os as _os
     _scripts = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', 'scripts')
-    _sys.path.insert(0, _scripts)
+    sys.path.insert(0, _scripts)
     import importlib
     dfs = importlib.import_module('dataforseo_api')
     has_sys_exit = False
