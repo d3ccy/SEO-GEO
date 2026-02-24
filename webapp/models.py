@@ -1,5 +1,5 @@
 """
-SQLAlchemy models for user authentication and management.
+SQLAlchemy models for user authentication, management, and client data.
 """
 from datetime import datetime, timezone
 
@@ -52,3 +52,38 @@ class User(UserMixin, db.Model):
 
     def __repr__(self) -> str:
         return f'<User {self.email}>'
+
+
+class Client(db.Model):
+    """SEO/GEO client record — replaces the legacy clients.json flat file."""
+
+    __tablename__ = 'clients'
+
+    id = db.Column(db.String(32), primary_key=True)   # uuid hex
+    name = db.Column(db.String(255), nullable=False)
+    domain = db.Column(db.String(255), nullable=True, default='')
+    project_name = db.Column(db.String(255), nullable=True, default='')
+    cms = db.Column(db.String(100), nullable=True, default='')
+    location_code = db.Column(db.Integer, nullable=True, default=2826)
+    notes = db.Column(db.Text, nullable=True, default='')
+    created = db.Column(db.DateTime, nullable=False,
+                        default=lambda: datetime.now(timezone.utc))
+
+    def to_dict(self) -> dict:
+        """Return a plain dict matching the legacy clients.json schema."""
+        return {
+            'id': self.id,
+            'name': self.name,
+            'domain': self.domain or '',
+            'project_name': self.project_name or '',
+            'cms': self.cms or '',
+            'location_code': self.location_code or 2826,
+            'notes': self.notes or '',
+            'created': (
+                self.created.isoformat()
+                if self.created else datetime.now(timezone.utc).isoformat()
+            ),
+        }
+
+    def __repr__(self) -> str:
+        return f'<Client {self.name}>'

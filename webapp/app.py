@@ -71,7 +71,7 @@ limiter.limit("10 per minute", methods=["POST"])(auth_bp)
 
 # ── Create tables (if not using migrations) ──────────────────────────────────
 with app.app_context():
-    from models import User  # noqa: F401  ensure model is registered
+    from models import User, Client  # noqa: F401  ensure models are registered
     db.create_all()
 
     # ── Seed test user (survives ephemeral Railway redeploys) ─────────────

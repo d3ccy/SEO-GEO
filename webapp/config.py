@@ -33,10 +33,11 @@ class Config:
 
     # ── Database ─────────────────────────────────────────────────────────
     _DB_PATH = os.path.join(BASE_DIR, 'webapp', 'data', 'users.db')
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
-        'DATABASE_URL',
-        f'sqlite:///{_DB_PATH}',
-    )
+    _db_uri = os.environ.get('DATABASE_URL', f'sqlite:///{_DB_PATH}')
+    # SQLAlchemy 2.x requires 'postgresql://' — Railway injects 'postgres://'
+    if _db_uri.startswith('postgres://'):
+        _db_uri = _db_uri.replace('postgres://', 'postgresql://', 1)
+    SQLALCHEMY_DATABASE_URI = _db_uri
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # ── User registration & activation ───────────────────────────────────
