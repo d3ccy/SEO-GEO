@@ -70,28 +70,6 @@ def _validate_password(password: str) -> Optional[str]:
     return None
 
 
-# ── One-time setup (REMOVE after use) ─────────────────────────────────────────
-
-@auth_bp.route('/setup-test-user/a3f7c2e9b41d')
-def setup_test_user():
-    """Create a pre-activated test user. Remove this route after first use."""
-    email = 'geotest@numiko.com'
-    existing = User.query.filter_by(email=email).first()
-    if existing:
-        existing.set_password('Tk9$mPx2!vR4geo')
-        existing.is_active_user = True
-        existing.activated_at = existing.activated_at or datetime.now(timezone.utc)
-        existing.deactivated_at = None
-        db.session.commit()
-        return f'Reset existing user: {email}', 200
-    user = User(email=email, name='GEO Test', is_active_user=True, is_admin=False,
-                activated_at=datetime.now(timezone.utc))
-    user.set_password('Tk9$mPx2!vR4geo')
-    db.session.add(user)
-    db.session.commit()
-    return f'Created user: {email} (id={user.id})', 200
-
-
 # ── Public routes ────────────────────────────────────────────────────────────
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
