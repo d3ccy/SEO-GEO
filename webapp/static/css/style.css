@@ -86,7 +86,7 @@ a:hover { text-decoration: underline; }
   /* Numiko logo is dark — invert to white on dark nav */
   filter: brightness(0) invert(1);
 }
-.nav-links { list-style: none; display: flex; gap: 4px; margin-left: auto; }
+.nav-links { list-style: none; display: flex; gap: 4px; margin-left: auto; margin-right: 0; }
 .nav-links a {
   color: rgba(255,255,255,0.75);
   padding: 6px 14px;
@@ -610,10 +610,87 @@ details[open] .how-to-chevron {
   margin-bottom: 4px;
 }
 
+/* ── Nav user info ── */
+.nav-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: 16px;
+  white-space: nowrap;
+}
+.nav-user-name {
+  color: rgba(255,255,255,0.65);
+  font-size: 13px;
+  font-weight: 500;
+}
+.nav-user-logout {
+  color: rgba(255,255,255,0.5);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 4px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.nav-user-logout:hover {
+  color: #fff;
+  border-color: rgba(255,255,255,0.5);
+  text-decoration: none;
+}
+
+/* ── Auth pages ── */
+.auth-page {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 40px;
+}
+.auth-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-mid);
+  border-radius: var(--radius);
+  padding: 36px 32px;
+  width: 100%;
+  max-width: 420px;
+}
+.auth-card h1 {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.auth-card .subtitle {
+  margin-bottom: 24px;
+}
+.auth-card .form-group input[type=email],
+.auth-card .form-group input[type=password],
+.auth-card .form-group input[type=text] {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--color-border-mid);
+  border-radius: 5px;
+  font-size: 14px;
+  font-family: 'ModernEra', Arial, sans-serif;
+  background: #fff;
+  color: var(--color-text);
+}
+.auth-card .form-group input:focus {
+  outline: none;
+  border-color: var(--color-orange);
+  box-shadow: 0 0 0 3px rgba(244,106,27,0.15);
+}
+.auth-footer {
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-muted);
+  margin-top: 20px;
+}
+
 /* Responsive */
 @media (max-width: 600px) {
   .form-row { grid-template-columns: 1fr; }
   .nav-links { display: none; }
+  .nav-user { display: none; }
+  .auth-card { padding: 24px 20px; }
   .container { padding: 20px 16px; }
   .metric-card { min-width: 90px; }
   .how-to-body { grid-template-columns: 1fr; }

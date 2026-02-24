@@ -12,6 +12,7 @@ webapp/uploads/*
 
 # Client data (back this up separately)
 webapp/data/clients.json
+webapp/data/users.db
 
 # Python
 __pycache__/

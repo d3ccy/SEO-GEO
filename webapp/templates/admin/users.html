@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}User Management — Numiko SEO-GEO Toolkit{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>User Management</h1>
+    <p class="subtitle">{{ users | length }} registered user{{ 's' if users | length != 1 }}</p>
+  </div>
+</div>
+
+<div class="clients-table-wrap">
+  <table class="results-table sortable-table">
+    <thead>
+      <tr>
+        <th class="sortable" data-col="0">Name</th>
+        <th class="sortable" data-col="1">Email</th>
+        <th class="sortable" data-col="2">Status</th>
+        <th class="sortable" data-col="3">Role</th>
+        <th class="sortable" data-col="4" data-type="number">Registered</th>
+        <th class="sortable" data-col="5" data-type="number">Last Login</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in users %}
+      <tr class="{{ 'row-blocked' if not user.is_active }}">
+        <td>{{ user.name }}</td>
+        <td>{{ user.email }}</td>
+        <td>
+          {% if user.deactivated_at %}
+            <span class="status-fail">Revoked</span>
+          {% elif user.is_active_user %}
+            <span class="status-ok">Active</span>
+          {% else %}
+            <span class="status-warn">Pending</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if user.is_admin %}
+            <span class="intent-chip intent-commercial">Admin</span>
+          {% else %}
+            <span class="text-muted">User</span>
+          {% endif %}
+        </td>
+        <td data-sort="{{ user.created_at.timestamp() if user.created_at else 0 }}">
+          {{ user.created_at.strftime('%d %b %Y') if user.created_at else '—' }}
+        </td>
+        <td data-sort="{{ user.last_login.timestamp() if user.last_login else 0 }}">
+          {{ user.last_login.strftime('%d %b %Y %H:%M') if user.last_login else '—' }}
+        </td>
+        <td>
+          {% if user.id != current_user.id %}
+            <div class="actions">
+              {# Toggle active / revoke #}
+              <form method="POST" action="{{ url_for('auth.admin_toggle_active', user_id=user.id) }}" class="inline-form">
+                {{ csrf_token() }}
+                {% if user.deactivated_at or not user.is_active_user %}
+                  <button type="submit" class="btn btn-sm btn-secondary" title="Activate user">Activate</button>
+                {% else %}
+                  <button type="submit" class="btn btn-sm btn-secondary" title="Revoke access">Revoke</button>
+                {% endif %}
+              </form>
+
+              {# Toggle admin #}
+              <form method="POST" action="{{ url_for('auth.admin_toggle_admin', user_id=user.id) }}" class="inline-form">
+                {{ csrf_token() }}
+                {% if user.is_admin %}
+                  <button type="submit" class="btn btn-sm btn-secondary" title="Remove admin role">Demote</button>
+                {% else %}
+                  <button type="submit" class="btn btn-sm btn-secondary" title="Promote to admin">Promote</button>
+                {% endif %}
+              </form>
+
+              {# Delete #}
+              <form method="POST" action="{{ url_for('auth.admin_delete_user', user_id=user.id) }}"
+                    class="inline-form delete-user-form" data-confirm-name="{{ user.name }}">
+                {{ csrf_token() }}
+                <button type="submit" class="btn btn-sm btn-danger" title="Delete user">Delete</button>
+              </form>
+            </div>
+          {% else %}
+            <span class="text-muted" style="font-size:12px;">You</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

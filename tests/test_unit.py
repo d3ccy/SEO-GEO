@@ -687,3 +687,149 @@ class TestSafeDownloadPath:
         # Should resolve inside OUTPUT_DIR (the filename has literal %).
         if path is not None:
             assert os.path.normpath(Config.OUTPUT_DIR) in path
+
+
+# ===========================================================================
+# 8. User model
+# ===========================================================================
+
+from werkzeug.security import generate_password_hash, check_password_hash
+
+
+class TestUserModel:
+    """Test password hashing and is_active property logic.
+
+    Password tests use werkzeug directly (identical to the model methods).
+    is_active tests use a lightweight Flask app context so SQLAlchemy
+    instrumentation works.
+    """
+
+    # -- password hashing (werkzeug, no app context needed) ----------------
+
+    def test_password_hashing(self):
+        """generate/check round-trip matches the model's set_password/check_password."""
+        pw_hash = generate_password_hash('Test1234', method='pbkdf2:sha256')
+        assert check_password_hash(pw_hash, 'Test1234')
+        assert not check_password_hash(pw_hash, 'wrong')
+
+    def test_password_different_hashes(self):
+        """Two calls produce different hashes (salting)."""
+        h1 = generate_password_hash('Test1234', method='pbkdf2:sha256')
+        h2 = generate_password_hash('Test1234', method='pbkdf2:sha256')
+        assert h1 != h2
+
+    # -- is_active property (needs SQLAlchemy model instrumentation) -------
+
+    @pytest.fixture
+    def _user_in_app(self, tmp_path):
+        """Create a minimal Flask app + DB and yield a User factory."""
+        from flask import Flask
+        from extensions import db as _db
+
+        app = Flask(__name__)
+        app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{tmp_path / "test.db"}'
+        app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+        app.config['SECRET_KEY'] = 'test'
+
+        _db.init_app(app)
+        with app.app_context():
+            from models import User
+            _db.create_all()
+            yield User, _db, app
+
+    def test_is_active_requires_activation(self, _user_in_app):
+        User, _db, app = _user_in_app
+        with app.app_context():
+            u = User(email='t@numiko.com', name='T', password_hash='x',
+                     is_active_user=False, deactivated_at=None)
+            assert not u.is_active
+
+    def test_is_active_true_when_activated(self, _user_in_app):
+        User, _db, app = _user_in_app
+        with app.app_context():
+            u = User(email='t@numiko.com', name='T', password_hash='x',
+                     is_active_user=True, deactivated_at=None)
+            assert u.is_active
+
+    def test_is_active_false_when_revoked(self, _user_in_app):
+        from datetime import datetime, timezone
+        User, _db, app = _user_in_app
+        with app.app_context():
+            u = User(email='t@numiko.com', name='T', password_hash='x',
+                     is_active_user=True,
+                     deactivated_at=datetime.now(timezone.utc))
+            assert not u.is_active
+
+
+# ===========================================================================
+# 9. Password validation
+# ===========================================================================
+
+
+class TestPasswordValidation:
+    """Test the _validate_password helper from auth.py."""
+
+    @staticmethod
+    def _validate(pw):
+        from auth import _validate_password
+        return _validate_password(pw)
+
+    def test_valid_password(self):
+        assert self._validate('Abcdef12') is None
+
+    def test_too_short(self):
+        err = self._validate('Ab1')
+        assert err is not None
+        assert '8 characters' in err
+
+    def test_no_uppercase(self):
+        err = self._validate('abcdefg1')
+        assert err is not None
+        assert 'uppercase' in err
+
+    def test_no_digit(self):
+        err = self._validate('Abcdefgh')
+        assert err is not None
+        assert 'digit' in err
+
+    def test_exactly_8_chars_valid(self):
+        assert self._validate('Abcdef12') is None
+
+    def test_long_password_valid(self):
+        assert self._validate('Abcdefghijklmnop1') is None
+
+
+# ===========================================================================
+# 10. Email domain validation
+# ===========================================================================
+
+
+class TestEmailValidation:
+    """Test the _is_valid_email helper from auth.py."""
+
+    @staticmethod
+    def _check(email):
+        from auth import _is_valid_email
+        return _is_valid_email(email)
+
+    def test_valid_numiko_email(self):
+        assert self._check('user@numiko.com')
+
+    def test_valid_numiko_email_mixed_case(self):
+        assert self._check('User@Numiko.com')
+
+    def test_invalid_domain(self):
+        assert not self._check('user@gmail.com')
+
+    def test_empty_string(self):
+        assert not self._check('')
+
+    def test_no_at_sign(self):
+        assert not self._check('usernumiko.com')
+
+    def test_similar_domain_rejected(self):
+        assert not self._check('user@notnumiko.com')
+
+    def test_subdomain_rejected(self):
+        """sub.numiko.com is NOT @numiko.com."""
+        assert not self._check('user@sub.numiko.com')

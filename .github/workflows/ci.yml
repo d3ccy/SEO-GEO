@@ -44,6 +44,9 @@ jobs:
           python -m py_compile webapp/app.py
           python -m py_compile webapp/config.py
           python -m py_compile webapp/auth.py
+          python -m py_compile webapp/extensions.py
+          python -m py_compile webapp/models.py
+          python -m py_compile webapp/email_service.py
           python -m py_compile webapp/services/audit_service.py
           python -m py_compile webapp/services/domain_service.py
           python -m py_compile webapp/services/keyword_service.py

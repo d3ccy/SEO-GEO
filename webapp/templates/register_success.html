@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Registration Successful — Numiko SEO-GEO Toolkit{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card" style="text-align:center;">
+    <div style="font-size:48px; margin-bottom:12px;">✉️</div>
+    <h1>Check Your Email</h1>
+    <p class="subtitle" style="margin-bottom:20px;">
+      We've sent an activation link to <strong>{{ email }}</strong>.
+    </p>
+    <p style="font-size:14px; color:var(--color-muted); margin-bottom:24px;">
+      Click the link in the email to activate your account. The link expires in 48 hours.
+    </p>
+    <p style="font-size:13px; color:var(--color-muted);">
+      Didn't receive it? Check your console output or contact an administrator.
+    </p>
+    <a href="{{ url_for('auth.login') }}" class="btn btn-secondary" style="margin-top:16px;">Back to Login</a>
+  </div>
+</div>
+{% endblock %}

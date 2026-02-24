@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Log In — Numiko SEO-GEO Toolkit{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    <h1>Log In</h1>
+    <p class="subtitle">Sign in to the SEO-GEO Toolkit</p>
+
+    <form method="POST" action="{{ url_for('auth.login', next=request.args.get('next', '')) }}">
+      {{ csrf_token() }}
+
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" value="{{ email }}" required autofocus
+               placeholder="you@numiko.com">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required
+               placeholder="Enter your password">
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary btn-large" style="width:100%">
+          <span class="btn-text">Log In</span>
+          <span class="btn-loading">Logging in…</span>
+        </button>
+      </div>
+    </form>
+
+    <p class="auth-footer">
+      Don't have an account? <a href="{{ url_for('auth.register') }}">Register</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

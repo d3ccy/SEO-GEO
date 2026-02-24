@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Register — Numiko SEO-GEO Toolkit{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    <h1>Create Account</h1>
+    <p class="subtitle">Register with your @numiko.com email</p>
+
+    <form method="POST" action="{{ url_for('auth.register') }}">
+      {{ csrf_token() }}
+
+      <div class="form-group">
+        <label for="name">Full Name <span class="required">*</span></label>
+        <input type="text" id="name" name="name" value="{{ name }}" required autofocus
+               placeholder="Your full name">
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email <span class="required">*</span></label>
+        <input type="email" id="email" name="email" value="{{ email }}" required
+               placeholder="you@numiko.com">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password <span class="required">*</span></label>
+        <input type="password" id="password" name="password" required
+               placeholder="Min 8 chars, 1 uppercase, 1 digit">
+      </div>
+
+      <div class="form-group">
+        <label for="confirm_password">Confirm Password <span class="required">*</span></label>
+        <input type="password" id="confirm_password" name="confirm_password" required
+               placeholder="Re-enter your password">
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary btn-large" style="width:100%">
+          <span class="btn-text">Register</span>
+          <span class="btn-loading">Registering…</span>
+        </button>
+      </div>
+    </form>
+
+    <p class="auth-footer">
+      Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

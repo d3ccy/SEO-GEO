@@ -15,7 +15,7 @@ MAX_KEYWORD_EXPORT_LIMIT = 50
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', '')
-    APP_PASSWORD = os.environ.get('APP_PASSWORD', '')  # empty = no auth
+    APP_PASSWORD = os.environ.get('APP_PASSWORD', '')  # legacy — kept for reference
 
     DATAFORSEO_LOGIN = os.environ.get('DATAFORSEO_LOGIN', '')
     DATAFORSEO_PASSWORD = os.environ.get('DATAFORSEO_PASSWORD', '')
@@ -31,6 +31,28 @@ class Config:
 
     MAX_CONTENT_LENGTH = 2 * 1024 * 1024  # 2 MB upload limit
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+    # ── Database ─────────────────────────────────────────────────────────
+    _DB_PATH = os.path.join(BASE_DIR, 'webapp', 'data', 'users.db')
+    SQLALCHEMY_DATABASE_URI = os.environ.get(
+        'DATABASE_URL',
+        f'sqlite:///{_DB_PATH}',
+    )
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    # ── User registration & activation ───────────────────────────────────
+    ALLOWED_EMAIL_DOMAIN = os.environ.get('ALLOWED_EMAIL_DOMAIN', 'numiko.com')
+    ACTIVATION_TOKEN_MAX_AGE = 48 * 3600  # 48 hours
+    ACTIVATION_TOKEN_SALT = 'email-activation-salt'
+    ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', '')
+
+    # ── Email (Resend) ────────────────────────────────────────────────────
+    RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
+    RESEND_FROM_EMAIL = os.environ.get('RESEND_FROM_EMAIL', 'Numiko <noreply@numiko.com>')
+
+    # ── Session security ─────────────────────────────────────────────────
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
 
     @classmethod
     def validate(cls):

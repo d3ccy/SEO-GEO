@@ -185,14 +185,16 @@ window.addEventListener('pageshow', () => {
   });
 });
 
-// ── Client delete confirmation ──────────────────────────────────────────────
+// ── Delete confirmation (clients + users) ───────────────────────────────────
 
 document.addEventListener('submit', (e) => {
-  const form = e.target.closest('.delete-client-form');
+  const clientForm = e.target.closest('.delete-client-form');
+  const userForm = e.target.closest('.delete-user-form');
+  const form = clientForm || userForm;
   if (!form) return;
 
-  const clientName = form.dataset.confirmName || 'this client';
-  if (!confirm('Delete "' + clientName + '"? This cannot be undone.')) {
+  const name = form.dataset.confirmName || 'this item';
+  if (!confirm('Delete "' + name + '"? This cannot be undone.')) {
     e.preventDefault();
   }
 });

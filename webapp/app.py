@@ -14,6 +14,7 @@ from flask import Flask, render_template, request, redirect, url_for, send_file,
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_login import login_required
 from werkzeug.utils import secure_filename
 
 from config import (
@@ -23,7 +24,8 @@ from config import (
     DEFAULT_KEYWORD_LIMIT,
     MAX_KEYWORD_EXPORT_LIMIT,
 )
-from auth import requires_auth
+from extensions import db, login_manager, migrate
+from auth import auth_bp
 from client_store import load_clients, save_client, delete_client, get_client
 from services.audit_service import run_audit
 from services.keyword_service import run_keyword_research
@@ -41,7 +43,12 @@ Config.ensure_output_dir()
 app = Flask(__name__)
 app.config['SECRET_KEY'] = Config.SECRET_KEY
 app.config['MAX_CONTENT_LENGTH'] = Config.MAX_CONTENT_LENGTH
+app.config['SQLALCHEMY_DATABASE_URI'] = Config.SQLALCHEMY_DATABASE_URI
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = Config.SQLALCHEMY_TRACK_MODIFICATIONS
+app.config['SESSION_COOKIE_HTTPONLY'] = Config.SESSION_COOKIE_HTTPONLY
+app.config['SESSION_COOKIE_SAMESITE'] = Config.SESSION_COOKIE_SAMESITE
 
+# ── Extensions ───────────────────────────────────────────────────────────────
 csrf = CSRFProtect(app)
 
 limiter = Limiter(
@@ -51,15 +58,26 @@ limiter = Limiter(
     storage_uri="memory://",
 )
 
+db.init_app(app)
+login_manager.init_app(app)
+migrate.init_app(app, db)
+
+# ── Blueprints ───────────────────────────────────────────────────────────────
+app.register_blueprint(auth_bp)
+
+# Apply rate limits to auth POST routes
+limiter.limit("10 per minute", methods=["POST"])(auth_bp)
+
+# ── Create tables (if not using migrations) ──────────────────────────────────
+with app.app_context():
+    from models import User  # noqa: F401  ensure model is registered
+    db.create_all()
+
 os.makedirs(Config.OUTPUT_DIR, exist_ok=True)
 os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
-
-def _get_password():
-    return Config.APP_PASSWORD
-
 
 def _validate_url(url):
     """Validate that *url* uses an allowed scheme (http or https).
@@ -95,14 +113,14 @@ def _safe_download_path(filename):
 # ── Routes ───────────────────────────────────────────────────────────────────
 
 @app.route('/')
-@requires_auth(_get_password)
+@login_required
 def index():
     clients = load_clients()
     return render_template('index.html', clients=clients)
 
 
 @app.route('/audit', methods=['GET', 'POST'])
-@requires_auth(_get_password)
+@login_required
 @limiter.limit("30 per minute", methods=["POST"])
 def audit():
     clients = load_clients()
@@ -129,7 +147,7 @@ def audit():
 
 
 @app.route('/keywords', methods=['GET', 'POST'])
-@requires_auth(_get_password)
+@login_required
 @limiter.limit("30 per minute", methods=["POST"])
 def keywords():
     clients = load_clients()
@@ -162,7 +180,7 @@ def keywords():
 
 
 @app.route('/content-guide', methods=['GET', 'POST'])
-@requires_auth(_get_password)
+@login_required
 @limiter.limit("10 per minute", methods=["POST"])
 def content_guide():
     clients = load_clients()
@@ -207,7 +225,7 @@ def content_guide():
 
 
 @app.route('/audit-report', methods=['POST'])
-@requires_auth(_get_password)
+@login_required
 @limiter.limit("10 per minute", methods=["POST"])
 def audit_report():
     """Run a GEO audit and download the result as a branded DOCX report."""
@@ -259,7 +277,7 @@ def audit_report():
 
 
 @app.route('/download/<path:filename>')
-@requires_auth(_get_password)
+@login_required
 def download_file(filename):
     path = _safe_download_path(filename)
     if path is None:
@@ -271,14 +289,14 @@ def download_file(filename):
 
 
 @app.route('/clients')
-@requires_auth(_get_password)
+@login_required
 def clients():
     all_clients = load_clients()
     return render_template('clients.html', clients=all_clients)
 
 
 @app.route('/clients/new', methods=['GET', 'POST'])
-@requires_auth(_get_password)
+@login_required
 @limiter.limit("20 per minute", methods=["POST"])
 def client_new():
     if request.method == 'POST':
@@ -303,7 +321,7 @@ def client_new():
 
 
 @app.route('/clients/<client_id>/edit', methods=['GET', 'POST'])
-@requires_auth(_get_password)
+@login_required
 @limiter.limit("20 per minute", methods=["POST"])
 def client_edit(client_id):
     client = get_client(client_id)
@@ -330,7 +348,7 @@ def client_edit(client_id):
 
 
 @app.route('/clients/<client_id>/delete', methods=['POST'])
-@requires_auth(_get_password)
+@login_required
 @limiter.limit("10 per minute", methods=["POST"])
 def client_delete(client_id):
     client = get_client(client_id)
@@ -342,7 +360,7 @@ def client_delete(client_id):
 
 
 @app.route('/ai-visibility', methods=['GET', 'POST'])
-@requires_auth(_get_password)
+@login_required
 @limiter.limit("20 per minute", methods=["POST"])
 def ai_visibility():
     clients = load_clients()
@@ -374,7 +392,7 @@ def ai_visibility():
 
 
 @app.route('/domain', methods=['GET', 'POST'])
-@requires_auth(_get_password)
+@login_required
 @limiter.limit("20 per minute", methods=["POST"])
 def domain():
     clients = load_clients()
@@ -405,7 +423,7 @@ def domain():
 
 
 @app.route('/keywords/export')
-@requires_auth(_get_password)
+@login_required
 @limiter.limit("10 per minute")
 def keywords_export():
     """Export keyword research as CSV."""
