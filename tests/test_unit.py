@@ -833,3 +833,71 @@ class TestEmailValidation:
     def test_subdomain_rejected(self):
         """sub.numiko.com is NOT @numiko.com."""
         assert not self._check('user@sub.numiko.com')
+
+
+# ===========================================================================
+# 11. Password reset tokens
+# ===========================================================================
+
+
+class TestPasswordResetTokens:
+    """Test password reset token generation, verification, and cross-salt
+    isolation from activation tokens."""
+
+    @pytest.fixture(autouse=True)
+    def _patch_config(self, monkeypatch):
+        """Patch Config so token tests run without a real SECRET_KEY."""
+        monkeypatch.setattr(Config, 'SECRET_KEY', 'test-secret-for-tokens')
+        monkeypatch.setattr(Config, 'PASSWORD_RESET_TOKEN_MAX_AGE', 15 * 60)
+        monkeypatch.setattr(Config, 'PASSWORD_RESET_TOKEN_SALT', 'password-reset-salt')
+        monkeypatch.setattr(Config, 'ACTIVATION_TOKEN_SALT', 'email-activation-salt')
+        monkeypatch.setattr(Config, 'ACTIVATION_TOKEN_MAX_AGE', 48 * 3600)
+
+    def test_generate_and_verify_round_trip(self):
+        """A freshly generated token verifies back to the original email."""
+        from email_service import generate_password_reset_token, verify_password_reset_token
+        token = generate_password_reset_token('alice@numiko.com')
+        assert verify_password_reset_token(token) == 'alice@numiko.com'
+
+    def test_invalid_token_returns_none(self):
+        """A random string is not a valid token."""
+        from email_service import verify_password_reset_token
+        assert verify_password_reset_token('not-a-valid-token-at-all') is None
+
+    def test_empty_token_returns_none(self):
+        from email_service import verify_password_reset_token
+        assert verify_password_reset_token('') is None
+
+    def test_tampered_token_returns_none(self):
+        """Modifying the token payload causes signature verification to fail."""
+        from email_service import generate_password_reset_token, verify_password_reset_token
+        token = generate_password_reset_token('alice@numiko.com')
+        tampered = token[:-5] + 'XXXXX'
+        assert verify_password_reset_token(tampered) is None
+
+    def test_activation_token_rejected_as_reset_token(self):
+        """An activation token (different salt) must NOT verify as a reset token."""
+        from email_service import generate_activation_token, verify_password_reset_token
+        act_token = generate_activation_token('alice@numiko.com')
+        assert verify_password_reset_token(act_token) is None
+
+    def test_reset_token_rejected_as_activation_token(self):
+        """A password reset token must NOT verify as an activation token."""
+        from email_service import generate_password_reset_token, verify_activation_token
+        reset_token = generate_password_reset_token('alice@numiko.com')
+        assert verify_activation_token(reset_token) is None
+
+    def test_token_carries_correct_email(self):
+        """Token issued for alice does not verify as bob."""
+        from email_service import generate_password_reset_token, verify_password_reset_token
+        token = generate_password_reset_token('alice@numiko.com')
+        email = verify_password_reset_token(token)
+        assert email == 'alice@numiko.com'
+        assert email != 'bob@numiko.com'
+
+    def test_two_tokens_for_same_email_are_different(self):
+        """Each call produces a unique token (timestamp-salted)."""
+        from email_service import generate_password_reset_token
+        t1 = generate_password_reset_token('alice@numiko.com')
+        t2 = generate_password_reset_token('alice@numiko.com')
+        assert t1 != t2

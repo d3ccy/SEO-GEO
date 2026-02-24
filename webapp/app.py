@@ -47,6 +47,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = Config.SQLALCHEMY_DATABASE_URI
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = Config.SQLALCHEMY_TRACK_MODIFICATIONS
 app.config['SESSION_COOKIE_HTTPONLY'] = Config.SESSION_COOKIE_HTTPONLY
 app.config['SESSION_COOKIE_SAMESITE'] = Config.SESSION_COOKIE_SAMESITE
+app.config['SESSION_COOKIE_SECURE'] = Config.SESSION_COOKIE_SECURE
 
 # ── Extensions ───────────────────────────────────────────────────────────────
 csrf = CSRFProtect(app)

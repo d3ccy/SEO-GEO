@@ -13,7 +13,9 @@
       Click the link in the email to activate your account. The link expires in 48 hours.
     </p>
     <p style="font-size:13px; color:var(--color-muted);">
-      Didn't receive it? Check your console output or contact an administrator.
+      Didn't receive it?
+      <a href="{{ url_for('auth.resend_activation') }}">Resend the activation email</a>
+      or contact an administrator.
     </p>
     <a href="{{ url_for('auth.login') }}" class="btn btn-secondary" style="margin-top:16px;">Back to Login</a>
   </div>

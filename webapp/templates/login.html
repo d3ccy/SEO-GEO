@@ -22,6 +22,14 @@
                placeholder="Enter your password">
       </div>
 
+      <div class="form-group form-group--inline">
+        <label class="checkbox-label">
+          <input type="checkbox" name="remember" value="1" checked>
+          Keep me logged in
+        </label>
+        <a href="{{ url_for('auth.forgot_password') }}" class="form-link-right">Forgot password?</a>
+      </div>
+
       <div class="form-actions">
         <button type="submit" class="btn btn-primary btn-large" style="width:100%">
           <span class="btn-text">Log In</span>
@@ -32,6 +40,9 @@
 
     <p class="auth-footer">
       Don't have an account? <a href="{{ url_for('auth.register') }}">Register</a>
+    </p>
+    <p class="auth-footer">
+      <a href="{{ url_for('auth.resend_activation') }}">Didn't receive your activation email?</a>
     </p>
   </div>
 </div>

@@ -2,7 +2,8 @@
 Authentication & user management blueprint.
 
 Provides login, registration (restricted to @numiko.com), email-token
-activation, and an admin panel for user management.
+activation, password reset, activation resend, and an admin panel for
+user management.
 """
 import re
 import logging
@@ -16,7 +17,10 @@ from flask_login import login_user, logout_user, login_required, current_user
 from extensions import db, login_manager
 from models import User
 from config import Config
-from email_service import generate_activation_token, verify_activation_token, send_activation_email
+from email_service import (
+    generate_activation_token, verify_activation_token, send_activation_email,
+    generate_password_reset_token, verify_password_reset_token, send_password_reset_email,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -80,32 +84,35 @@ def login():
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
+        remember = bool(request.form.get('remember'))
 
         user = User.query.filter_by(email=email).first()
 
         if user is None:
-            print(f'[LOGIN] FAIL user not found: {email}')
+            logger.warning('[LOGIN] FAIL user not found: %s', email)
             flash('Invalid email or password.', 'error')
             return render_template('login.html', email=email)
 
         if not user.check_password(password):
-            print(f'[LOGIN] FAIL wrong password for: {email} (id={user.id}, active={user.is_active_user})')
+            logger.warning('[LOGIN] FAIL wrong password for: %s (id=%s, active=%s)',
+                           email, user.id, user.is_active_user)
             flash('Invalid email or password.', 'error')
             return render_template('login.html', email=email)
 
         if not user.is_active:
             if user.deactivated_at:
-                print(f'[LOGIN] FAIL account revoked: {email}')
+                logger.warning('[LOGIN] FAIL account revoked: %s', email)
                 flash('Your account has been revoked. Contact an administrator.', 'error')
             else:
-                print(f'[LOGIN] FAIL account not activated: {email}')
-                flash('Your account has not been activated yet. Check your email for the activation link.', 'error')
+                logger.warning('[LOGIN] FAIL account not activated: %s', email)
+                flash('Your account has not been activated yet. '
+                      'Check your email for the activation link.', 'error')
             return render_template('login.html', email=email)
 
-        login_user(user, remember=True)
+        login_user(user, remember=remember)
         user.last_login = datetime.now(timezone.utc)
         db.session.commit()
-        print(f'[LOGIN] OK: {email}')
+        logger.info('[LOGIN] OK: %s', email)
 
         next_page = request.args.get('next') or url_for('index')
         return redirect(next_page)
@@ -157,7 +164,7 @@ def register():
         db.session.commit()
         logger.info('New user registered: %s', email)
 
-        # Generate activation token and log the URL
+        # Generate activation token and send email
         token = generate_activation_token(email)
         send_activation_email(user, token)
 
@@ -198,6 +205,96 @@ def logout():
     logout_user()
     flash('You have been logged out.')
     return redirect(url_for('auth.login'))
+
+
+# ── Password reset ────────────────────────────────────────────────────────────
+
+@auth_bp.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        if email:
+            user = User.query.filter_by(email=email).first()
+            # Only send if the account exists and is active; silently skip
+            # everything else so we never reveal whether an address is registered.
+            if user and user.is_active:
+                token = generate_password_reset_token(email)
+                send_password_reset_email(user, token)
+                logger.info('[PASSWORD RESET] Link sent for: %s', email)
+
+        flash('If an account with that email exists, a reset link has been sent. '
+              'Check your inbox (link expires in 15 minutes).')
+        return redirect(url_for('auth.forgot_password'))
+
+    return render_template('forgot_password.html')
+
+
+@auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+
+    email = verify_password_reset_token(token)
+    if email is None:
+        flash('This password reset link is invalid or has expired.', 'error')
+        return redirect(url_for('auth.forgot_password'))
+
+    user = User.query.filter_by(email=email).first()
+    if user is None or not user.is_active:
+        flash('This password reset link is invalid or has expired.', 'error')
+        return redirect(url_for('auth.forgot_password'))
+
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        confirm = request.form.get('confirm_password', '')
+
+        error = None
+        if not password:
+            error = 'Password is required.'
+        elif password != confirm:
+            error = 'Passwords do not match.'
+        else:
+            error = _validate_password(password)
+
+        if error:
+            flash(error, 'error')
+            return render_template('reset_password.html', token=token)
+
+        user.set_password(password)
+        db.session.commit()
+        logger.info('[PASSWORD RESET] Password updated for: %s', email)
+        flash('Your password has been reset. You can now log in.')
+        return redirect(url_for('auth.login'))
+
+    return render_template('reset_password.html', token=token)
+
+
+# ── Resend activation ─────────────────────────────────────────────────────────
+
+@auth_bp.route('/resend-activation', methods=['GET', 'POST'])
+def resend_activation():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        if email:
+            user = User.query.filter_by(email=email).first()
+            # Only resend if the account exists and is genuinely pending activation
+            # (not activated, not admin-revoked).
+            if user and not user.is_active_user and user.deactivated_at is None:
+                token = generate_activation_token(email)
+                send_activation_email(user, token)
+                logger.info('[ACTIVATION RESEND] Link sent for: %s', email)
+
+        flash('If that email is registered and awaiting activation, '
+              'a new activation link has been sent.')
+        return redirect(url_for('auth.resend_activation'))
+
+    return render_template('resend_activation.html')
 
 
 # ── Admin routes ─────────────────────────────────────────────────────────────

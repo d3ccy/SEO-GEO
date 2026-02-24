@@ -45,6 +45,10 @@ class Config:
     ACTIVATION_TOKEN_SALT = 'email-activation-salt'
     ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', '')
 
+    # ── Password reset ────────────────────────────────────────────────────
+    PASSWORD_RESET_TOKEN_MAX_AGE = 15 * 60   # 15 minutes
+    PASSWORD_RESET_TOKEN_SALT = 'password-reset-salt'
+
     # ── Email (Resend) ────────────────────────────────────────────────────
     RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
     RESEND_FROM_EMAIL = os.environ.get('RESEND_FROM_EMAIL', 'Numiko <noreply@numiko.com>')
@@ -52,6 +56,11 @@ class Config:
     # ── Session security ─────────────────────────────────────────────────
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
+    # HTTPS-only cookies in production; disabled when running locally
+    SESSION_COOKIE_SECURE = not bool(
+        os.environ.get('FLASK_DEBUG') or
+        os.environ.get('FLASK_ENV') == 'development'
+    )
 
     @classmethod
     def validate(cls):
