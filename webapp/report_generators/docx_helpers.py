@@ -15,6 +15,9 @@ from docx.oxml import parse_xml
 
 logger = logging.getLogger(__name__)
 
+# Brand font
+FONT_NAME = 'Modern Era'
+
 # Brand colours
 BLACK = RGBColor(26, 26, 26)
 DARK = RGBColor(40, 40, 40)
@@ -85,44 +88,104 @@ def _ensure_required_styles(doc: Document) -> None:
         bullet_style.element.find(qn('w:pPr')).append(numPr)
 
 
-def create_document() -> Document:
+def _set_cover_page_text(doc: Document, title: str, subtitle: str) -> None:
+    """Replace 'Document Title' and 'Subtitle' placeholders in the first-page
+    footer (footer3) of the Numiko template with the actual title and subtitle.
+
+    The Numiko template uses a titlePg sectPr, so the first page has its own
+    header (cover image) and footer (title + subtitle text).
+    """
+    # The first-page footer is linked via the sectPr titlePg flag.
+    # In python-docx, sections[0].first_page_footer maps to footer3.xml.
+    if not doc.sections:
+        return
+
+    section = doc.sections[0]
+
+    # Access the first-page footer (the cover page footer)
+    try:
+        footer = section.first_page_footer
+    except Exception:
+        logger.debug('No first-page footer found in template')
+        return
+
+    if footer is None:
+        return
+
+    for paragraph in footer.paragraphs:
+        for run in paragraph.runs:
+            if run.text == 'Document Title':
+                run.text = title
+            elif run.text == 'Subtitle':
+                run.text = subtitle
+
+
+def create_document(title: str = '', subtitle: str = '') -> Document:
     """Create a new Document using the Numiko branded .dotx template.
 
-    The template provides branded styles, headers, footers and fonts.
+    The template provides a branded cover page (via first-page header/footer),
+    styled headers, footers, and fonts.  The ``title`` and ``subtitle``
+    parameters are written into the cover page footer, replacing the
+    placeholder text.
+
     Falls back to a blank Document if the template is not found, applying
-    basic Calibri styling as before.
+    basic Modern Era styling as before.
     """
     if os.path.exists(_NUMIKO_TEMPLATE):
         try:
             logger.info('Creating document from Numiko template: %s', _NUMIKO_TEMPLATE)
             stream = _dotx_to_docx_stream(_NUMIKO_TEMPLATE)
             doc = Document(stream)
-            # Remove placeholder body content the template may contain,
-            # but preserve sectPr (section properties) which link to
-            # headers/footers defined in the section rels.
+
             body = doc.element.body
             sect_pr = body.find(qn('w:sectPr'))
+
+            # Identify the Cover Page SDT — we want to keep it so the
+            # template cover page (with its page break) is preserved.
+            cover_sdt = None
+            toc_sdt = None
             for child in list(body):
-                if child is not sect_pr:
-                    body.remove(child)
-            # Add a single empty paragraph so the doc is valid
+                if child.tag == qn('w:sdt'):
+                    sdt_pr = child.find(qn('w:sdtPr'))
+                    if sdt_pr is not None:
+                        dpo = sdt_pr.find(qn('w:docPartObj'))
+                        if dpo is not None:
+                            gallery = dpo.find(qn('w:docPartGallery'))
+                            if gallery is not None:
+                                val = gallery.get(qn('w:val'))
+                                if val == 'Cover Pages':
+                                    cover_sdt = child
+                                elif val == 'Table of Contents':
+                                    toc_sdt = child
+
+            # Remove everything except cover SDT and sectPr
+            for child in list(body):
+                if child is sect_pr or child is cover_sdt:
+                    continue
+                body.remove(child)
+
+            # Add a single empty paragraph before sectPr as a structural anchor
+            # for report content to be appended after the cover page.
             doc.add_paragraph()
-            # Remove that paragraph's text (it's just a structural anchor)
             if doc.paragraphs:
-                doc.paragraphs[0].clear()
+                doc.paragraphs[-1].clear()
+
+            # Replace cover page title/subtitle in the first-page footer
+            if title or subtitle:
+                _set_cover_page_text(doc, title, subtitle)
+
             # Ensure styles required by the report generators exist.
-            # The Numiko template may not include every built-in style.
             _ensure_required_styles(doc)
             return doc
         except Exception:
             logger.warning('Failed to load Numiko template — falling back to blank document',
                            exc_info=True)
 
-    logger.info('Using blank document with Calibri defaults')
+    logger.info('Using blank document with Modern Era defaults')
     doc = Document()
     # Apply basic styling fallback
     style = doc.styles['Normal']
-    style.font.name = 'Calibri'
+    style.font.name = FONT_NAME
     style.font.size = Pt(10)
     style.font.color.rgb = DARK
     return doc
@@ -172,7 +235,7 @@ def add_styled_para(doc, text, size=10, bold=False, italic=False, color=None,
     run.font.bold = bold
     run.font.italic = italic
     run.font.color.rgb = color
-    run.font.name = 'Calibri'
+    run.font.name = FONT_NAME
     if alignment:
         p.alignment = alignment
     p.paragraph_format.space_after = space_after
@@ -185,7 +248,7 @@ def add_heading(doc, text, level=1):
     h = doc.add_heading(text, level=level)
     for run in h.runs:
         run.font.color.rgb = BLACK
-        run.font.name = 'Calibri'
+        run.font.name = FONT_NAME
     return h
 
 
@@ -197,13 +260,13 @@ def add_bullet(doc, text, bold_prefix=None):
         run.font.bold = True
         run.font.size = Pt(10)
         run.font.color.rgb = DARK
-        run.font.name = 'Calibri'
+        run.font.name = FONT_NAME
         run = p.add_run(text)
     else:
         run = p.add_run(text)
     run.font.size = Pt(10)
     run.font.color.rgb = DARK
-    run.font.name = 'Calibri'
+    run.font.name = FONT_NAME
     p.paragraph_format.space_after = Pt(2)
     return p
 
@@ -222,7 +285,7 @@ def add_table(doc, headers, rows):
         run.font.size = Pt(9)
         run.font.bold = True
         run.font.color.rgb = WHITE
-        run.font.name = 'Calibri'
+        run.font.name = FONT_NAME
         set_cell_shading(cell, '1A1A1A')
 
     for row_idx, row in enumerate(rows):
@@ -234,7 +297,7 @@ def add_table(doc, headers, rows):
             p = cell.paragraphs[0]
             run = p.add_run(val)
             run.font.size = Pt(9)
-            run.font.name = 'Calibri'
+            run.font.name = FONT_NAME
             run.font.color.rgb = DARK
             if row_idx % 2 == 1:
                 set_cell_shading(cell, 'F5F5F5')
@@ -266,7 +329,7 @@ def add_callout_box(doc, heading, body_lines, accent_hex, bg_hex, heading_color=
     run.font.size = Pt(10)
     run.font.bold = True
     run.font.color.rgb = heading_color
-    run.font.name = 'Calibri'
+    run.font.name = FONT_NAME
     p.paragraph_format.space_after = Pt(4)
 
     for line in body_lines:
@@ -274,7 +337,7 @@ def add_callout_box(doc, heading, body_lines, accent_hex, bg_hex, heading_color=
         run = p.add_run(line)
         run.font.size = Pt(9)
         run.font.color.rgb = DARK
-        run.font.name = 'Calibri'
+        run.font.name = FONT_NAME
         p.paragraph_format.space_after = Pt(3)
 
     doc.add_paragraph()
@@ -312,11 +375,11 @@ def add_checklist_item(doc, text):
     run = p.add_run('[ ]  ')
     run.font.size = Pt(10)
     run.font.color.rgb = GRAY
-    run.font.name = 'Calibri'
+    run.font.name = FONT_NAME
     run = p.add_run(text)
     run.font.size = Pt(10)
     run.font.color.rgb = DARK
-    run.font.name = 'Calibri'
+    run.font.name = FONT_NAME
     p.paragraph_format.space_after = Pt(2)
     p.paragraph_format.left_indent = Cm(0.5)
     return p

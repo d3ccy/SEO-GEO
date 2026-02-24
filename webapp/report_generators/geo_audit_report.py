@@ -71,8 +71,6 @@ def build_geo_audit_report(params: dict, audit: dict) -> Document:
     client_domain = params.get('client_domain') or audit.get('url', '')
     project_name = params.get('project_name') or ''
     date_str = params.get('date') or datetime.now().strftime('%B %Y')
-    logo_path = params.get('logo_path') or DEFAULT_LOGO
-
     # Convenience aliases
     score = audit.get('score', 0)
     title = audit.get('title') or ''
@@ -97,48 +95,11 @@ def build_geo_audit_report(params: dict, audit: dict) -> Document:
     from docx.shared import RGBColor
     SCORE_COLOR = RGBColor(*score_rgb)
 
-    doc = create_document()
+    # Build cover page title — use client name as title, project name as subtitle
+    cover_title = f'GEO Audit Report — {client_name}'
+    cover_subtitle = project_name or client_domain
 
-    for section in doc.sections:
-        section.top_margin = Cm(2)
-        section.bottom_margin = Cm(2)
-        section.left_margin = Cm(2.5)
-        section.right_margin = Cm(2.5)
-
-    # ── TITLE PAGE ──────────────────────────────────────────────────────────
-    doc.add_paragraph()
-    doc.add_paragraph()
-
-    if os.path.exists(logo_path):
-        p = doc.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = p.add_run()
-        run.add_picture(logo_path, height=Cm(3))
-
-    doc.add_paragraph()
-    add_styled_para(doc, 'GEO Audit Report', size=28, bold=True, color=BLACK,
-                    alignment=WD_ALIGN_PARAGRAPH.CENTER, space_after=Pt(4))
-    add_styled_para(doc, client_domain, size=18, bold=True, color=BLACK,
-                    alignment=WD_ALIGN_PARAGRAPH.CENTER, space_after=Pt(8))
-    add_styled_para(doc, client_name, size=14, color=GRAY,
-                    alignment=WD_ALIGN_PARAGRAPH.CENTER, space_after=Pt(4))
-    if project_name:
-        add_styled_para(doc, project_name, size=11, bold=True, color=GRAY,
-                        alignment=WD_ALIGN_PARAGRAPH.CENTER, space_after=Pt(4))
-    add_styled_para(doc, date_str, size=10, color=LIGHT_GRAY,
-                    alignment=WD_ALIGN_PARAGRAPH.CENTER, space_after=Pt(4))
-    add_styled_para(doc, 'Generative Engine Optimization', size=10, color=LIGHT_GRAY,
-                    alignment=WD_ALIGN_PARAGRAPH.CENTER, space_after=Pt(40))
-    data_sources = 'Data sources: Direct site crawl, robots.txt, sitemap.xml'
-    if backlinks_rank is not None or referring_domains is not None:
-        data_sources += ', DataForSEO Backlinks API'
-    add_styled_para(doc, data_sources,
-                    size=8, color=LIGHT_GRAY, alignment=WD_ALIGN_PARAGRAPH.CENTER,
-                    space_after=Pt(2))
-    add_styled_para(doc, 'Based on Princeton GEO research framework (KDD 2024)',
-                    size=8, color=LIGHT_GRAY, alignment=WD_ALIGN_PARAGRAPH.CENTER)
-
-    doc.add_page_break()
+    doc = create_document(title=cover_title, subtitle=cover_subtitle)
 
     # ── EXECUTIVE SUMMARY ───────────────────────────────────────────────────
     add_heading(doc, 'Executive Summary', level=1)

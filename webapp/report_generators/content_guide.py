@@ -13,7 +13,7 @@ params dict keys:
 import os
 import logging
 from datetime import datetime
-from docx.shared import Pt, Cm
+from docx.shared import Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 from docx import Document
@@ -37,51 +37,10 @@ def build_content_guide(params: dict) -> Document:
     project_name = params.get('project_name') or ''
     date_str = params.get('date') or datetime.now().strftime('%B %Y')
     cms = params.get('cms') or 'Drupal'
-    logo_path = params.get('logo_path') or DEFAULT_LOGO
-
-    doc = create_document()
-
-    for section in doc.sections:
-        section.top_margin = Cm(2)
-        section.bottom_margin = Cm(2)
-        section.left_margin = Cm(2.5)
-        section.right_margin = Cm(2.5)
-
-    # ── TITLE PAGE ──────────────────────────────────────────────────────────
-    doc.add_paragraph()
-    doc.add_paragraph()
-
-    if logo_path and os.path.exists(logo_path):
-        p = doc.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = p.add_run()
-        run.add_picture(logo_path, height=Cm(3))
-
-    doc.add_paragraph()
-    add_styled_para(doc, 'Content Guide', size=28, bold=True, color=BLACK,
-                    alignment=WD_ALIGN_PARAGRAPH.CENTER, space_after=Pt(4))
-    add_styled_para(doc, 'SEO & GEO', size=22, bold=True, color=BLACK,
-                    alignment=WD_ALIGN_PARAGRAPH.CENTER, space_after=Pt(8))
-    add_styled_para(doc, 'Writing for Search Engines and AI', size=14, color=GRAY,
-                    alignment=WD_ALIGN_PARAGRAPH.CENTER, space_after=Pt(20))
-
-    cover_subtitle = client_domain
-    if project_name:
-        cover_subtitle = f'{client_domain} \u2014 {project_name}' if client_domain else project_name
-    if cover_subtitle:
-        add_styled_para(doc, cover_subtitle, size=11, color=GRAY,
-                        alignment=WD_ALIGN_PARAGRAPH.CENTER, space_after=Pt(4))
-
-    add_styled_para(doc, date_str, size=10, color=LIGHT_GRAY,
-                    alignment=WD_ALIGN_PARAGRAPH.CENTER, space_after=Pt(40))
-    add_styled_para(doc,
-                    f'A practical guide for content authors{" at " + client_name if client_name else ""}',
-                    size=8, color=LIGHT_GRAY, alignment=WD_ALIGN_PARAGRAPH.CENTER,
-                    space_after=Pt(2))
-    add_styled_para(doc, 'Based on Princeton GEO research (KDD 2024)',
-                    size=8, color=LIGHT_GRAY, alignment=WD_ALIGN_PARAGRAPH.CENTER)
-
-    doc.add_page_break()
+    # Build cover page title — use client name as title, project name as subtitle
+    cover_title = f'SEO & GEO Content Guide — {client_name}'
+    cover_sub = project_name or client_domain
+    doc = create_document(title=cover_title, subtitle=cover_sub)
 
     # ── 1. WHY THIS MATTERS ──────────────────────────────────────────────────
     add_heading(doc, '1. Why This Matters', level=1)

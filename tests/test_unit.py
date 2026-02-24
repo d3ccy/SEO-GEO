@@ -480,10 +480,10 @@ class TestReportGeneration:
         """Force create_document() to return a plain blank Document so tests
         do not depend on the Numiko .dotx template file being loadable by
         the installed version of python-docx."""
-        def _blank_doc():
+        def _blank_doc(title='', subtitle=''):
             doc = DocxDocument()
             style = doc.styles['Normal']
-            style.font.name = 'Calibri'
+            style.font.name = 'Modern Era'
             return doc
 
         # Patch in every module that has imported the name
