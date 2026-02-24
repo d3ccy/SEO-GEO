@@ -54,7 +54,7 @@
             <div class="actions">
               {# Toggle active / revoke #}
               <form method="POST" action="{{ url_for('auth.admin_toggle_active', user_id=user.id) }}" class="inline-form">
-                {{ csrf_token() }}
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 {% if user.deactivated_at or not user.is_active_user %}
                   <button type="submit" class="btn btn-sm btn-secondary" title="Activate user">Activate</button>
                 {% else %}
@@ -64,7 +64,7 @@
 
               {# Toggle admin #}
               <form method="POST" action="{{ url_for('auth.admin_toggle_admin', user_id=user.id) }}" class="inline-form">
-                {{ csrf_token() }}
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 {% if user.is_admin %}
                   <button type="submit" class="btn btn-sm btn-secondary" title="Remove admin role">Demote</button>
                 {% else %}
@@ -75,7 +75,7 @@
               {# Delete #}
               <form method="POST" action="{{ url_for('auth.admin_delete_user', user_id=user.id) }}"
                     class="inline-form delete-user-form" data-confirm-name="{{ user.name }}">
-                {{ csrf_token() }}
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-sm btn-danger" title="Delete user">Delete</button>
               </form>
             </div>

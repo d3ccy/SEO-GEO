@@ -8,7 +8,7 @@
     <p class="subtitle">Register with your @numiko.com email</p>
 
     <form method="POST" action="{{ url_for('auth.register') }}">
-      {{ csrf_token() }}
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
       <div class="form-group">
         <label for="name">Full Name <span class="required">*</span></label>
