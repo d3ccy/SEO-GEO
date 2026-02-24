@@ -59,6 +59,32 @@ def _dotx_to_docx_stream(dotx_path: str) -> io.BytesIO:
     return buf
 
 
+def _ensure_required_styles(doc: Document) -> None:
+    """Add any paragraph styles the report generators rely on but which may
+    be absent from the branded template (e.g. 'List Bullet')."""
+    from docx.enum.style import WD_STYLE_TYPE
+
+    existing = {s.name for s in doc.styles}
+    if 'List Bullet' not in existing:
+        bullet_style = doc.styles.add_style('List Bullet', WD_STYLE_TYPE.PARAGRAPH)
+        bullet_style.base_style = doc.styles['Normal']
+        fmt = bullet_style.paragraph_format
+        fmt.left_indent = Cm(1.27)
+        fmt.first_line_indent = Cm(-0.63)
+        fmt.space_before = Pt(2)
+        fmt.space_after = Pt(2)
+        # Register the bullet numbering via XML so Word renders the bullet glyph
+        from docx.oxml import OxmlElement
+        numPr = OxmlElement('w:numPr')
+        ilvl = OxmlElement('w:ilvl')
+        ilvl.set(qn('w:val'), '0')
+        numId = OxmlElement('w:numId')
+        numId.set(qn('w:val'), '1')
+        numPr.append(ilvl)
+        numPr.append(numId)
+        bullet_style.element.find(qn('w:pPr')).append(numPr)
+
+
 def create_document() -> Document:
     """Create a new Document using the Numiko branded .dotx template.
 
@@ -84,6 +110,9 @@ def create_document() -> Document:
             # Remove that paragraph's text (it's just a structural anchor)
             if doc.paragraphs:
                 doc.paragraphs[0].clear()
+            # Ensure styles required by the report generators exist.
+            # The Numiko template may not include every built-in style.
+            _ensure_required_styles(doc)
             return doc
         except Exception:
             logger.warning('Failed to load Numiko template — falling back to blank document',
