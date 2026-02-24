@@ -77,14 +77,31 @@ with app.app_context():
     _SEED_EMAIL = os.environ.get('SEED_USER_EMAIL', '').strip().lower()
     _SEED_PASS = os.environ.get('SEED_USER_PASSWORD', '')
     if _SEED_EMAIL and _SEED_PASS:
-        if not User.query.filter_by(email=_SEED_EMAIL).first():
+        _existing_seed = User.query.filter_by(email=_SEED_EMAIL).first()
+        if not _existing_seed:
             _seed = User(email=_SEED_EMAIL, name='Seed User',
-                         is_active_user=True, is_admin=False)
+                         is_active_user=True, is_admin=True)
             _seed.activated_at = datetime.now()
             _seed.set_password(_SEED_PASS)
             db.session.add(_seed)
             db.session.commit()
             logger.info('Seed user created: %s', _SEED_EMAIL)
+        elif not _existing_seed.is_admin:
+            _existing_seed.is_admin = True
+            db.session.commit()
+            logger.info('Seed user promoted to admin: %s', _SEED_EMAIL)
+
+    # ── Remove stale/test accounts on startup ────────────────────────────
+    _REMOVE_EMAILS = [
+        'davideccles@numiko.com',
+        'david.eccles@numiko.com',
+    ]
+    for _rem_email in _REMOVE_EMAILS:
+        _stale = User.query.filter_by(email=_rem_email).first()
+        if _stale:
+            db.session.delete(_stale)
+            db.session.commit()
+            logger.info('Removed stale user: %s', _rem_email)
 
 os.makedirs(Config.OUTPUT_DIR, exist_ok=True)
 os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
