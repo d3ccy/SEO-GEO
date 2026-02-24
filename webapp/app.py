@@ -73,6 +73,19 @@ with app.app_context():
     from models import User  # noqa: F401  ensure model is registered
     db.create_all()
 
+    # ── Seed test user (survives ephemeral Railway redeploys) ─────────────
+    _SEED_EMAIL = os.environ.get('SEED_USER_EMAIL', '').strip().lower()
+    _SEED_PASS = os.environ.get('SEED_USER_PASSWORD', '')
+    if _SEED_EMAIL and _SEED_PASS:
+        if not User.query.filter_by(email=_SEED_EMAIL).first():
+            _seed = User(email=_SEED_EMAIL, name='Seed User',
+                         is_active_user=True, is_admin=False)
+            _seed.activated_at = datetime.now()
+            _seed.set_password(_SEED_PASS)
+            db.session.add(_seed)
+            db.session.commit()
+            logger.info('Seed user created: %s', _SEED_EMAIL)
+
 os.makedirs(Config.OUTPUT_DIR, exist_ok=True)
 os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
 
