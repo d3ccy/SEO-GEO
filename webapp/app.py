@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import io
 import csv
@@ -112,6 +113,11 @@ def _validate_url(url):
     """
     if not url:
         raise ValueError("Please enter a URL.")
+    url = url.strip()
+    # Fix double-protocol prefix (e.g. https://https://example.com) which can
+    # happen when a browser's type="url" input prepends https:// to a URL that
+    # already has a scheme — strip the outer one and keep the inner.
+    url = re.sub(r'^https?://(https?://)', r'\1', url)
     parsed = urlparse(url)
     if parsed.scheme not in ('http', 'https', ''):
         raise ValueError("Only http and https URLs are allowed.")
