@@ -30,7 +30,7 @@ from auth import auth_bp
 from client_store import load_clients, save_client, delete_client, get_client
 from services.audit_service import run_audit
 from services.keyword_service import run_keyword_research
-from services.ai_visibility_service import run_ai_visibility
+from services.ai_visibility_service import run_ai_visibility, LOCATION_OPTIONS
 from services.domain_service import run_domain_overview
 from services.report_service import generate_content_guide_docx, generate_geo_audit_docx
 
@@ -63,6 +63,23 @@ limiter = Limiter(
 db.init_app(app)
 login_manager.init_app(app)
 migrate.init_app(app, db)
+
+# ── Jinja2 custom filters ─────────────────────────────────────────────────────
+def _format_number(value):
+    """Format a number with K/M/B suffix for display in templates."""
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return str(value) if value is not None else '0'
+    if n >= 1_000_000_000:
+        return f"{n / 1_000_000_000:.1f}B"
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.1f}M"
+    if n >= 1_000:
+        return f"{n / 1_000:.1f}K"
+    return str(n)
+
+app.jinja_env.filters['format_number'] = _format_number
 
 # ── Blueprints ───────────────────────────────────────────────────────────────
 app.register_blueprint(auth_bp)
@@ -408,9 +425,14 @@ def ai_visibility():
     error = None
     form = {}
     if request.method == 'POST':
+        try:
+            location_code = int(request.form.get('location_code', 2826))
+        except (ValueError, TypeError):
+            location_code = 2826
         form = {
             'domain': request.form.get('domain', '').strip(),
             'brand_query': request.form.get('brand_query', '').strip(),
+            'location_code': location_code,
         }
         if not Config.DATAFORSEO_LOGIN or not Config.DATAFORSEO_PASSWORD:
             error = 'DataForSEO credentials are not configured.'
@@ -421,6 +443,7 @@ def ai_visibility():
                 result = run_ai_visibility(
                     form['domain'],
                     brand_query=brand_query,
+                    location_code=location_code,
                 )
             except Exception as e:
                 logger.exception("AI visibility check failed for '%s': %s", form['domain'], e)
@@ -428,7 +451,8 @@ def ai_visibility():
         else:
             error = 'Please enter a domain.'
     return render_template('ai_visibility.html', result=result, error=error,
-                           clients=clients, form=form)
+                           clients=clients, form=form,
+                           location_options=LOCATION_OPTIONS)
 
 
 @app.route('/domain', methods=['GET', 'POST'])

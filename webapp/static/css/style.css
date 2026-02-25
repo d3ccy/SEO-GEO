@@ -885,6 +885,161 @@ details[open] .how-to-chevron {
   margin-right: 6px;
 }
 
+/* ── AI Visibility — mention banners ──────────────────────────────────────── */
+.mention-banner {
+  padding: 9px 14px;
+  border-radius: 5px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.mention-banner-ok {
+  background: #EBFAF0;
+  border: 1px solid #a8dab5;
+  color: #167832;
+}
+.mention-banner-warn {
+  background: #FFF8EC;
+  border: 1px solid #f5d08a;
+  color: #7a4e00;
+}
+
+/* ── AI Visibility — aggregated metrics scorecard ─────────────────────────── */
+.agg-metrics-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.agg-metric-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-mid);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  min-width: 200px;
+  flex: 1;
+}
+.agg-metric-platform {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-orange);
+  margin-bottom: 10px;
+}
+.agg-metric-row {
+  display: flex;
+  gap: 20px;
+}
+.agg-metric-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.agg-metric-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-ink);
+  line-height: 1;
+}
+.agg-metric-label {
+  font-size: 11px;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ── AI Visibility — LLM mention cards ───────────────────────────────────── */
+.mention-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mention-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-mid);
+  border-left: 3px solid var(--color-orange);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+.mention-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.mention-platform-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-mid);
+  color: var(--color-muted);
+}
+.mention-platform-badge.mention-platform-google { border-color: #4285F4; color: #4285F4; }
+.mention-platform-badge.mention-platform-chatgpt { border-color: #10a37f; color: #10a37f; }
+.mention-vol {
+  font-size: 11px;
+  color: var(--color-muted);
+  margin-left: auto;
+}
+.mention-question {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-ink);
+  margin: 0 0 6px;
+}
+.mention-answer {
+  font-size: 13px;
+  color: var(--color-text);
+  line-height: 1.6;
+  margin: 0 0 8px;
+}
+.mention-sources {
+  font-size: 12px;
+  color: var(--color-muted);
+  margin: 0;
+}
+.mention-source-chip {
+  display: inline-block;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-size: 11px;
+  margin: 0 3px 0 0;
+}
+
+/* ── AI Visibility — top domains table ───────────────────────────────────── */
+.top-domain-target { background: #FAFFF5; font-weight: 600; }
+.target-chip {
+  display: inline-block;
+  background: #d4f4df;
+  color: #0e6b30;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  margin-left: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ── AI Visibility — shared section meta label ────────────────────────────── */
+.section-meta {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-muted);
+}
+.sources-heading {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 16px 0 8px;
+  color: var(--color-ink);
+}
+
 /* Responsive */
 @media (max-width: 600px) {
   .form-row { grid-template-columns: 1fr; }

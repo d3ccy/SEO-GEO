@@ -4,29 +4,44 @@
 {% block content %}
 <div class="page-header">
   <h1>AI Visibility</h1>
-  <p class="subtitle">See how AI platforms mention your brand — ChatGPT, Perplexity, Claude, Gemini</p>
+  <p class="subtitle">See how AI platforms mention your brand — ChatGPT, Perplexity, Claude, Gemini &amp; Google AI</p>
 </div>
 
 {% include 'partials/how_to_ai_visibility.html' %}
 
 <form method="POST" id="ai-vis-form" class="form-card">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
   {% if clients %}
   <div class="form-group">
     <label for="client-select">Load client profile</label>
-    <select id="client-select" data-clients="{{ clients | tojson | e }}" data-target-field="domain" data-domain-prefix="">
+    <select id="client-select" data-target-field="domain" data-domain-prefix="">
       <option value="">— Select a client —</option>
       {% for c in clients %}
-        <option value="{{ c.id }}" data-domain="{{ c.domain }}">{{ c.name }}{% if c.domain %} ({{ c.domain }}){% endif %}</option>
+        <option value="{{ c.id }}"
+                data-domain="{{ c.domain }}"
+                data-name="{{ c.name }}"
+                data-project="{{ c.project_name or '' }}">{{ c.name }}{% if c.domain %} ({{ c.domain }}){% endif %}</option>
       {% endfor %}
     </select>
   </div>
   {% endif %}
 
-  <div class="form-group">
-    <label for="domain">Domain <span class="required">*</span></label>
-    <input type="text" id="domain" name="domain" value="{{ form.get('domain', '') }}" placeholder="e.g. numiko.com" required autocomplete="off">
+  <div class="form-row">
+    <div class="form-group">
+      <label for="domain">Domain <span class="required">*</span></label>
+      <input type="text" id="domain" name="domain" value="{{ form.get('domain', '') }}" placeholder="e.g. numiko.com" required autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label for="location_code">Location</label>
+      <select id="location_code" name="location_code">
+        {% for code, label in location_options %}
+          <option value="{{ code }}"{% if form.get('location_code', 2826) == code %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
   </div>
+
   <div class="form-group">
     <label for="brand_query">Brand / search query <span class="optional">(optional — auto-filled from domain)</span></label>
     <input type="text" id="brand_query" name="brand_query" value="{{ form.get('brand_query', '') }}" placeholder="e.g. Numiko digital agency">
@@ -34,7 +49,7 @@
 
   <button type="submit" class="btn btn-primary" id="ai-vis-submit">
     <span class="btn-text">Check AI Visibility</span>
-    <span class="btn-loading" hidden>Checking&hellip; (may take 20s)</span>
+    <span class="btn-loading" hidden>Checking&hellip; (may take 30s)</span>
   </button>
 </form>
 
@@ -44,33 +59,74 @@
 
 {% if result %}
 <div class="results-section">
-  <h2>AI Visibility for <strong>{{ result.domain }}</strong></h2>
-  <p class="subtitle" style="margin-bottom:20px;">Query: &ldquo;{{ result.brand_query }}&rdquo;</p>
+
+  <div class="results-header">
+    <h2>AI Visibility for <strong>{{ result.domain }}</strong></h2>
+    <p class="subtitle">Query: &ldquo;{{ result.brand_query }}&rdquo;</p>
+  </div>
 
   {% if result.errors %}
-  <div class="alert alert-warn">
-    <strong>Note:</strong> Some checks could not complete (API access may be required):
+  <div class="alert alert-warn" style="margin-bottom:20px;">
+    <strong>Note:</strong> Some checks could not complete (API plan access required):
     {% for err in result.errors %}<br><small>• {{ err }}</small>{% endfor %}
   </div>
   {% endif %}
 
-  {# ── Panel 1: LLM Mentions ── #}
+  {# ── Aggregated Metrics Scorecard ── #}
+  {% if result.aggregated_metrics is not none %}
   <div class="section">
-    <h2>LLM Mentions Overview</h2>
+    <h2>Visibility Scorecard</h2>
+    {% if result.aggregated_metrics | length == 0 %}
+      <p class="empty-state">No aggregated mention data found for this domain.</p>
+    {% else %}
+    <div class="agg-metrics-grid">
+      {% for m in result.aggregated_metrics %}
+      <div class="agg-metric-card">
+        <div class="agg-metric-platform">{{ m.platform | title }}</div>
+        <div class="agg-metric-row">
+          <div class="agg-metric-item">
+            <span class="agg-metric-value">{{ m.mentions }}</span>
+            <span class="agg-metric-label">Mentions</span>
+          </div>
+          <div class="agg-metric-item">
+            <span class="agg-metric-value">{{ m.ai_search_volume | int | format_number }}</span>
+            <span class="agg-metric-label">AI Search Volume</span>
+          </div>
+          <div class="agg-metric-item">
+            <span class="agg-metric-value">{{ m.impressions | int | format_number }}</span>
+            <span class="agg-metric-label">Impressions</span>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {# ── LLM Mentions — where the domain is cited ── #}
+  <div class="section">
+    <h2>LLM Mentions <span class="section-meta">— questions where your domain is cited as a source</span></h2>
     {% if result.mentions is none %}
       <p class="empty-state">LLM Mentions data not available — requires AI Optimization API access.</p>
     {% elif result.mentions | length == 0 %}
-      <p class="empty-state">No mentions found across LLM platforms for this domain.</p>
+      <p class="empty-state">No citation mentions found for this domain across LLM platforms.</p>
     {% else %}
-    <div class="metric-cards">
-      {% for platform in result.mentions %}
-      <div class="metric-card">
-        <div class="metric-value">{{ platform.mentions }}</div>
-        <div class="metric-label">{{ platform.platform }}</div>
-        {% if platform.sentiment %}
-        <div class="metric-sub">
-          <span class="intent-chip intent-{{ platform.sentiment }}">{{ platform.sentiment }}</span>
+    <div class="mention-list">
+      {% for m in result.mentions %}
+      <div class="mention-card">
+        <div class="mention-header">
+          <span class="mention-platform-badge mention-platform-{{ m.platform }}">{{ m.platform | title }}</span>
+          {% if m.ai_search_volume %}
+          <span class="mention-vol">{{ m.ai_search_volume | int | format_number }} AI searches/mo</span>
+          {% endif %}
         </div>
+        <p class="mention-question">{{ m.question }}</p>
+        {% if m.answer_snippet %}
+        <p class="mention-answer">{{ m.answer_snippet }}{% if m.answer_snippet | length >= 400 %}&hellip;{% endif %}</p>
+        {% endif %}
+        {% if m.source_domains %}
+        <p class="mention-sources">Also cited: {% for d in m.source_domains %}<span class="mention-source-chip">{{ d }}</span>{% endfor %}</p>
         {% endif %}
       </div>
       {% endfor %}
@@ -78,31 +134,104 @@
     {% endif %}
   </div>
 
-  {# ── Panel 2: ChatGPT Search ── #}
+  {# ── Top Domains ── #}
+  {% if result.top_domains is not none %}
+  <div class="section">
+    <h2>Top Cited Domains <span class="section-meta">— domains most cited by AI for related queries</span></h2>
+    {% if result.top_domains | length == 0 %}
+      <p class="empty-state">No top domain data available.</p>
+    {% else %}
+    <table class="data-table sortable-table">
+      <thead>
+        <tr>
+          <th class="sortable" data-col="0">Domain</th>
+          <th class="sortable" data-col="1" data-type="number">Mentions</th>
+          <th class="sortable" data-col="2" data-type="number">AI Search Volume</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for td in result.top_domains %}
+        <tr{% if td.is_target %} class="top-domain-target"{% endif %}>
+          <td>
+            {{ td.domain }}
+            {% if td.is_target %}<span class="target-chip">your domain</span>{% endif %}
+          </td>
+          <td data-sort="{{ td.mentions }}">{{ td.mentions }}</td>
+          <td data-sort="{{ td.ai_search_volume }}">{{ td.ai_search_volume | int | format_number }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {# ── Google AI Overview ── #}
+  <div class="section">
+    <h2>Google AI Overview</h2>
+    {% if result.ai_overview is none %}
+      <p class="empty-state">Google AI Overview data not available.</p>
+    {% elif not result.ai_overview.text and not result.ai_overview.references %}
+      <p class="empty-state">No Google AI Overview was returned for this query — Google may not show an AI Overview for this search.</p>
+    {% else %}
+      {% if result.ai_overview.domain_mentioned %}
+      <div class="mention-banner mention-banner-ok">
+        ✓ <strong>{{ result.domain }}</strong> is referenced in Google&rsquo;s AI Overview.
+      </div>
+      {% else %}
+      <div class="mention-banner mention-banner-warn">
+        ✗ <strong>{{ result.domain }}</strong> does not appear in Google&rsquo;s AI Overview for this query.
+      </div>
+      {% endif %}
+
+      {% if result.ai_overview.text %}
+      <div class="llm-answer-box" style="margin-top:12px;">
+        <p class="llm-answer-label">Google AI Overview for &ldquo;{{ result.brand_query }}&rdquo;</p>
+        <div class="llm-answer-text">{{ result.ai_overview.text }}</div>
+      </div>
+      {% endif %}
+
+      {% if result.ai_overview.references %}
+      <h3 class="sources-heading">Sources cited by Google AI ({{ result.ai_overview.references | length }})</h3>
+      <ul class="source-list">
+        {% for ref in result.ai_overview.references %}
+        <li>
+          {% if ref.url %}<a href="{{ ref.url }}" target="_blank" rel="noopener">{% endif %}
+          {{ ref.title or ref.url or ref.domain }}
+          {% if ref.url %}</a>{% endif %}
+          {% if ref.domain %}<small class="text-muted"> — {{ ref.domain }}</small>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    {% endif %}
+  </div>
+
+  {# ── ChatGPT Search ── #}
   <div class="section">
     <h2>ChatGPT Search Result</h2>
     {% if result.chatgpt is none %}
       <p class="empty-state">ChatGPT Search data not available — requires AI Optimization API access.</p>
     {% else %}
       {% if result.chatgpt.domain_mentioned %}
-        <div class="alert" style="background:#EBFAF0;border:1px solid #a8dab5;color:#167832;margin-bottom:16px;">
-          ✓ <strong>Your domain appears</strong> in ChatGPT's answer or cited sources.
-        </div>
+      <div class="mention-banner mention-banner-ok">
+        ✓ <strong>{{ result.domain }}</strong> appears in ChatGPT&rsquo;s answer or cited sources.
+      </div>
       {% else %}
-        <div class="alert alert-warn">
-          ✗ <strong>Your domain does not appear</strong> in this ChatGPT result.
-        </div>
+      <div class="mention-banner mention-banner-warn">
+        ✗ <strong>{{ result.domain }}</strong> does not appear in this ChatGPT result.
+      </div>
       {% endif %}
 
       {% if result.chatgpt.answer %}
-      <div class="llm-answer-box">
-        <p class="llm-answer-label">ChatGPT&rsquo;s answer to &ldquo;{{ result.brand_query }}&rdquo;:</p>
+      <div class="llm-answer-box" style="margin-top:12px;">
+        <p class="llm-answer-label">ChatGPT&rsquo;s answer to &ldquo;{{ result.brand_query }}&rdquo;</p>
         <div class="llm-answer-text">{{ result.chatgpt.answer }}</div>
       </div>
       {% endif %}
 
       {% if result.chatgpt.sources %}
-      <h3 style="font-size:14px;margin:16px 0 8px;font-weight:700;">Cited Sources ({{ result.chatgpt.sources | length }})</h3>
+      <h3 class="sources-heading">Cited Sources ({{ result.chatgpt.sources | length }})</h3>
       <ul class="source-list">
         {% for source in result.chatgpt.sources %}
         <li>
@@ -117,7 +246,7 @@
     {% endif %}
   </div>
 
-  {# ── Panel 3: Multi-LLM Comparison ── #}
+  {# ── Multi-LLM Comparison ── #}
   <div class="section">
     <h2>Multi-LLM Comparison</h2>
     {% if result.llm_responses is none %}
@@ -129,18 +258,22 @@
       {% for llm in result.llm_responses %}
       <button class="tab-btn{% if loop.first %} active{% endif %}" data-tab="llm-{{ loop.index }}">
         {{ llm.platform }}
-        {% if llm.domain_mentioned %}<span class="tab-badge tab-badge-ok" title="Domain mentioned">✓</span>{% endif %}
+        {% if llm.domain_mentioned %}<span class="tab-badge tab-badge-ok" title="Brand mentioned">✓</span>{% endif %}
       </button>
       {% endfor %}
     </div>
     {% for llm in result.llm_responses %}
     <div class="tab-panel{% if loop.first %} active{% endif %}" id="llm-{{ loop.index }}">
       {% if llm.domain_mentioned %}
-      <div style="background:#EBFAF0;border:1px solid #a8dab5;color:#167832;padding:8px 12px;border-radius:5px;font-size:13px;margin-bottom:12px;">
+      <div class="mention-banner mention-banner-ok">
         ✓ <strong>{{ result.domain }}</strong> is mentioned in this response.
       </div>
+      {% else %}
+      <div class="mention-banner mention-banner-warn">
+        ✗ <strong>{{ result.domain }}</strong> does not appear in this response.
+      </div>
       {% endif %}
-      <div class="llm-answer-box">
+      <div class="llm-answer-box" style="margin-top:10px;">
         <div class="llm-answer-text">{{ llm.response }}</div>
       </div>
     </div>
