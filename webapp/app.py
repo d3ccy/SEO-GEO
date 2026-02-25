@@ -152,8 +152,10 @@ def audit():
     result = None
     error = None
     url_value = ''
+    use_stealth = False
     if request.method == 'POST':
         url_value = request.form.get('url', '').strip()
+        use_stealth = request.form.get('use_stealth') == '1'
         try:
             url_value = _validate_url(url_value)
         except ValueError as ve:
@@ -161,14 +163,14 @@ def audit():
 
         if not error:
             try:
-                logger.info("Running audit for URL: %s", url_value)
-                result = run_audit(url_value)
+                logger.info("Running audit for URL: %s (stealth=%s)", url_value, use_stealth)
+                result = run_audit(url_value, use_stealth=use_stealth)
                 logger.info("Audit completed successfully for URL: %s", url_value)
             except Exception as e:
                 logger.exception("Audit failed for URL %s: %s", url_value, e)
                 error = 'An unexpected error occurred while running the audit.'
     return render_template('audit.html', result=result, error=error,
-                           clients=clients, url_value=url_value)
+                           clients=clients, url_value=url_value, use_stealth=use_stealth)
 
 
 @app.route('/keywords', methods=['GET', 'POST'])
@@ -257,6 +259,7 @@ def audit_report():
     url_value = request.form.get('url', '').strip()
     client_name = request.form.get('client_name', '').strip()
     project_name = request.form.get('project_name', '').strip()
+    use_stealth = request.form.get('use_stealth') == '1'
 
     if not url_value:
         flash('Please enter a URL to generate a report.', 'error')
@@ -269,8 +272,8 @@ def audit_report():
         return redirect(url_for('audit'))
 
     try:
-        logger.info("Running audit report for URL: %s", url_value)
-        audit_data = run_audit(url_value)
+        logger.info("Running audit report for URL: %s (stealth=%s)", url_value, use_stealth)
+        audit_data = run_audit(url_value, use_stealth=use_stealth)
     except Exception as e:
         logger.exception("Audit report failed for URL %s: %s", url_value, e)
         flash('Could not fetch URL — check the address and try again.', 'error')

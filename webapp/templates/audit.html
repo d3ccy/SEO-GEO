@@ -28,6 +28,16 @@
     <input type="url" id="url" name="url" value="{{ url_value }}" placeholder="https://example.com" required autocomplete="url">
   </div>
 
+  <div class="form-group stealth-toggle-group">
+    <label class="checkbox-label stealth-label" for="use-stealth">
+      <input type="checkbox" id="use-stealth" name="use_stealth" value="1"{% if use_stealth %} checked{% endif %}>
+      <span class="stealth-label-text">
+        <span class="stealth-label-title">🛡 Cloudflare bypass mode</span>
+        <span class="stealth-label-desc">Impersonates a real Chrome browser&rsquo;s TLS fingerprint — use when a site is protected by Cloudflare</span>
+      </span>
+    </label>
+  </div>
+
   <button type="submit" class="btn btn-primary" id="audit-submit">
     <span class="btn-text">Run Audit</span>
     <span class="btn-loading" hidden>Auditing&hellip;</span>
@@ -42,8 +52,13 @@
 <div class="results-section">
   <div class="results-header">
     <h2>Results for <a href="{{ result.url }}" target="_blank" rel="noopener">{{ result.url }}</a></h2>
-    <div class="score-badge score-{% if result.score >= 71 %}green{% elif result.score >= 41 %}amber{% else %}red{% endif %}">
-      GEO Score: {{ result.score }}/100
+    <div class="results-header-badges">
+      <div class="score-badge score-{% if result.score >= 71 %}green{% elif result.score >= 41 %}amber{% else %}red{% endif %}">
+        GEO Score: {{ result.score }}/100
+      </div>
+      {% if result.use_stealth %}
+      <div class="stealth-badge">🛡 Cloudflare bypass</div>
+      {% endif %}
     </div>
   </div>
 
@@ -53,6 +68,11 @@
     The on-page checks below (title, description, H1, schema) could not be completed.
     robots.txt and sitemap checks were still performed.<br>
     <small>{{ result.block_reason }}</small>
+    {% if not result.use_stealth %}
+    <br><br>
+    <strong>💡 Tip:</strong> This site may be protected by Cloudflare.
+    Try enabling <strong>Cloudflare bypass mode</strong> in the form above and re-running the audit.
+    {% endif %}
   </div>
   {% endif %}
 
@@ -174,6 +194,7 @@
     <form method="POST" action="/audit-report" id="report-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="url" value="{{ result.url }}">
+      <input type="hidden" name="use_stealth" value="{{ '1' if result.use_stealth else '0' }}">
       <div class="report-form-row">
         <div class="form-group">
           <label for="report-client-name">Client / Organisation name</label>

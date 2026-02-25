@@ -6,8 +6,11 @@ from seo_audit import fetch_url, extract_meta, check_robots, check_sitemap
 logger = logging.getLogger(__name__)
 
 
-def run_audit(url: str) -> dict:
+def run_audit(url: str, use_stealth: bool = False) -> dict:
     """Run full SEO/GEO audit, return structured dict for template rendering.
+
+    use_stealth=True enables curl_cffi Chrome TLS impersonation — this defeats
+    Cloudflare's JA3/JA4 fingerprinting which standard httpx cannot bypass.
 
     If the main page is blocked (WAF/Cloudflare), returns partial results
     with a warning rather than failing completely. robots.txt and sitemap
@@ -20,7 +23,7 @@ def run_audit(url: str) -> dict:
     if not url.startswith('http'):
         url = f'https://{url}'
 
-    content, headers, load_time = fetch_url(url)
+    content, headers, load_time = fetch_url(url, use_stealth=use_stealth)
 
     page_blocked = content is None
     block_reason = None
@@ -35,9 +38,9 @@ def run_audit(url: str) -> dict:
     else:
         meta = extract_meta(content)
 
-    robots = check_robots(url)
+    robots = check_robots(url, use_stealth=use_stealth)
     robots_content = robots.get('content')
-    has_sitemap, sitemap_url = check_sitemap(url, robots_content=robots_content)
+    has_sitemap, sitemap_url = check_sitemap(url, robots_content=robots_content, use_stealth=use_stealth)
 
     title = meta.get('title') or ''
     description = meta.get('description') or ''
@@ -47,6 +50,7 @@ def run_audit(url: str) -> dict:
 
     return {
         'url': url,
+        'use_stealth': use_stealth,
         'page_blocked': page_blocked,
         'block_reason': block_reason,
         'title': title,

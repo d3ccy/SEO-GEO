@@ -15,6 +15,18 @@ import html as html_module
 
 
 # ---------------------------------------------------------------------------
+# curl_cffi — impersonates browser TLS fingerprints at the socket level
+# (defeats Cloudflare JA3/JA4 fingerprinting that httpx cannot bypass)
+# Falls back gracefully if not installed.
+# ---------------------------------------------------------------------------
+try:
+    from curl_cffi import requests as cffi_requests
+    _CURL_CFFI_AVAILABLE = True
+except ImportError:
+    _CURL_CFFI_AVAILABLE = False
+
+
+# ---------------------------------------------------------------------------
 # httpx with HTTP/2 support — much better WAF bypass than urllib
 # Falls back gracefully to urllib if not installed
 # ---------------------------------------------------------------------------
@@ -156,6 +168,35 @@ def _fetch_httpx(url, timeout):
         return content, dict(resp.headers), load_time
 
 
+def _fetch_curl_cffi(url, timeout):
+    """Fetch using curl_cffi — impersonates Chrome's TLS fingerprint at the socket level.
+
+    Unlike httpx (which only spoofs HTTP headers), curl_cffi uses a libcurl build
+    linked against BoringSSL — the same TLS library Chrome uses — so the TLS Client
+    Hello (JA3/JA4 fingerprint) is indistinguishable from a real Chrome session.
+    This is the key technique needed to bypass Cloudflare's TLS fingerprinting checks.
+
+    Returns (content, headers_dict, load_time) or raises.
+    """
+    start = time.time()
+    resp = cffi_requests.get(
+        url,
+        impersonate="chrome124",
+        headers={
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "Accept-Language": "en-GB,en;q=0.9",
+            "Cache-Control": "max-age=0",
+            "Upgrade-Insecure-Requests": "1",
+        },
+        timeout=timeout,
+        verify=False,
+        allow_redirects=True,
+    )
+    content = resp.text
+    load_time = time.time() - start
+    return content, dict(resp.headers), load_time
+
+
 def _fetch_urllib(url, headers, timeout):
     """Single urllib fetch attempt."""
     start = time.time()
@@ -169,8 +210,14 @@ def _fetch_urllib(url, headers, timeout):
         return content, dict(resp.headers), load_time
 
 
-def fetch_url(url, timeout=30):
-    """Fetch URL, trying httpx (HTTP/2) first then urllib fallbacks.
+def fetch_url(url, timeout=30, use_stealth=False):
+    """Fetch URL, optionally using curl_cffi stealth mode (Chrome TLS impersonation).
+
+    Fetch order:
+      1. curl_cffi with Chrome TLS impersonation  [if use_stealth=True]
+      2. httpx with HTTP/2
+      3. urllib with multiple header-set fallbacks
+
     Returns (content, headers, load_time) on success.
     Returns (None, None, error_string) on total failure.
     """
@@ -178,6 +225,18 @@ def fetch_url(url, timeout=30):
     got_cf_challenge = False
 
     for try_url in _url_variants(url):
+
+        # ── curl_cffi stealth (Chrome TLS fingerprint impersonation) ────────
+        if use_stealth and _CURL_CFFI_AVAILABLE:
+            try:
+                content, resp_headers, load_time = _fetch_curl_cffi(try_url, timeout)
+                if _is_bot_challenge(content, resp_headers):
+                    got_cf_challenge = True
+                elif content and len(content) > 200:
+                    return content, resp_headers, load_time
+            except Exception as e:
+                last_error = str(e)
+                # Fall through to httpx / urllib
 
         # ── httpx with HTTP/2 (primary — best WAF bypass) ──────────────────
         if _HTTPX_AVAILABLE:
@@ -226,10 +285,18 @@ def fetch_url(url, timeout=30):
                 continue
 
     if got_cf_challenge:
+        if use_stealth:
+            return None, None, (
+                "Cloudflare bot protection is still blocking this site even with bypass mode enabled. "
+                "The site may use Cloudflare's Managed Challenge or Turnstile (CAPTCHA-based), "
+                "which cannot be bypassed automatically. "
+                "To audit this site, add 'NumikoAuditBot/1.0' to the Cloudflare WAF allowlist, "
+                "or temporarily disable Bot Fight Mode."
+            )
         return None, None, (
             "Cloudflare bot protection is blocking this site. "
-            "To audit this site, add 'NumikoAuditBot/1.0' to the Cloudflare WAF allowlist, "
-            "or temporarily disable Bot Fight Mode."
+            "Try enabling Cloudflare bypass mode and re-running the audit. "
+            "Alternatively, add 'NumikoAuditBot/1.0' to the Cloudflare WAF allowlist."
         )
 
     return None, None, (
@@ -270,11 +337,11 @@ def extract_meta(html):
     return result
 
 
-def check_robots(url):
+def check_robots(url, use_stealth=False):
     """Check robots.txt. Returns allowed and blocked AI bots separately."""
     parsed = urllib.parse.urlparse(url)
     robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
-    content, _, _ = fetch_url(robots_url)
+    content, _, _ = fetch_url(robots_url, use_stealth=use_stealth)
 
     result = {"exists": False, "ai_bots": [], "ai_bots_blocked": [], "content": None}
     if not content:
@@ -345,7 +412,7 @@ def check_robots(url):
     return result
 
 
-def check_sitemap(url, robots_content=None):
+def check_sitemap(url, robots_content=None, use_stealth=False):
     """Check if a sitemap exists. Checks robots.txt Sitemap: directive,
     /sitemap.xml and /sitemap_index.xml. Returns (found: bool, sitemap_url: str|None)."""
     parsed = urllib.parse.urlparse(url)
@@ -363,19 +430,19 @@ def check_sitemap(url, robots_content=None):
             line = line.strip()
             if line.lower().startswith('sitemap:'):
                 sitemap_ref = line.split(':', 1)[1].strip()
-                content, _, _ = fetch_url(sitemap_ref)
+                content, _, _ = fetch_url(sitemap_ref, use_stealth=use_stealth)
                 if _is_sitemap(content):
                     return True, sitemap_ref
 
     # 2. Check /sitemap.xml
     sitemap_url = f"{base}/sitemap.xml"
-    content, _, _ = fetch_url(sitemap_url)
+    content, _, _ = fetch_url(sitemap_url, use_stealth=use_stealth)
     if _is_sitemap(content):
         return True, sitemap_url
 
     # 3. Check /sitemap_index.xml
     sitemap_index_url = f"{base}/sitemap_index.xml"
-    content, _, _ = fetch_url(sitemap_index_url)
+    content, _, _ = fetch_url(sitemap_index_url, use_stealth=use_stealth)
     if _is_sitemap(content):
         return True, sitemap_index_url
 

@@ -793,6 +793,67 @@ details[open] .how-to-chevron {
   margin-bottom: 2px;
 }
 
+/* ── Stealth / Cloudflare bypass toggle ─────────────────────────────── */
+.stealth-toggle-group {
+  margin-top: 4px;
+  margin-bottom: 20px;
+}
+.stealth-label {
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #F8FAFF;
+  border: 1px solid #D0DCF5;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.stealth-label:hover {
+  background: #EFF4FF;
+  border-color: #7AA0E8;
+}
+.stealth-label input[type=checkbox] {
+  margin-top: 2px;
+  flex-shrink: 0;
+  accent-color: #2563eb;
+}
+.stealth-label-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.stealth-label-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--color-ink);
+}
+.stealth-label-desc {
+  font-size: 12px;
+  color: var(--color-muted);
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+/* Results header: score badge + stealth badge side by side */
+.results-header-badges {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.stealth-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #EFF4FF;
+  border: 1px solid #93B4F0;
+  color: #1D4ED8;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
 /* Responsive */
 @media (max-width: 600px) {
   .form-row { grid-template-columns: 1fr; }
