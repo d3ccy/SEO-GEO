@@ -126,9 +126,12 @@ document.querySelectorAll('#client-select').forEach((select) => {
     const location = selected.dataset.location || '';
 
     // Audit page: fill URL
+    // Strip any protocol from domain before prepending https:// so we never
+    // produce a double-protocol value (e.g. if the stored domain includes https://)
     const urlField = document.getElementById('url');
     if (urlField && domain) {
-      urlField.value = 'https://' + domain;
+      const cleanDomain = domain.replace(/^https?:\/\//, '');
+      urlField.value = 'https://' + cleanDomain;
     }
 
     // Keywords page: fill keyword (domain as seed), location
