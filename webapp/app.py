@@ -159,9 +159,13 @@ def audit():
     error = None
     url_value = ''
     use_stealth = False
+    audit_client_name = ''
+    audit_project_name = ''
     if request.method == 'POST':
         url_value = request.form.get('url', '').strip()
         use_stealth = request.form.get('use_stealth') == '1'
+        audit_client_name = request.form.get('client_name', '').strip()
+        audit_project_name = request.form.get('project_name', '').strip()
         try:
             url_value = _validate_url(url_value)
         except ValueError as ve:
@@ -176,7 +180,9 @@ def audit():
                 logger.exception("Audit failed for URL %s: %s", url_value, e)
                 error = 'An unexpected error occurred while running the audit.'
     return render_template('audit.html', result=result, error=error,
-                           clients=clients, url_value=url_value, use_stealth=use_stealth)
+                           clients=clients, url_value=url_value, use_stealth=use_stealth,
+                           audit_client_name=audit_client_name,
+                           audit_project_name=audit_project_name)
 
 
 @app.route('/keywords', methods=['GET', 'POST'])

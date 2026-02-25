@@ -17,7 +17,7 @@
     <select id="client-select" data-clients="{{ clients | tojson | e }}" data-target-field="url" data-domain-prefix="https://">
       <option value="">— Select a client —</option>
       {% for c in clients %}
-        <option value="{{ c.id }}" data-domain="{{ c.domain }}">{{ c.name }}{% if c.domain %} ({{ c.domain }}){% endif %}</option>
+        <option value="{{ c.id }}" data-domain="{{ c.domain }}" data-name="{{ c.name }}" data-project="{{ c.project_name or '' }}">{{ c.name }}{% if c.domain %} ({{ c.domain }}){% endif %}</option>
       {% endfor %}
     </select>
   </div>
@@ -37,6 +37,9 @@
       </span>
     </label>
   </div>
+
+  <input type="hidden" id="client_name" name="client_name" value="{{ audit_client_name }}">
+  <input type="hidden" id="project_name" name="project_name" value="{{ audit_project_name }}">
 
   <button type="submit" class="btn btn-primary" id="audit-submit">
     <span class="btn-text">Run Audit</span>
@@ -195,6 +198,17 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="url" value="{{ result.url }}">
       <input type="hidden" name="use_stealth" value="{{ '1' if result.use_stealth else '0' }}">
+      {% if audit_client_name %}
+      {# Client was selected — pass data as hidden fields and show a read-only summary #}
+      <input type="hidden" name="client_name" value="{{ audit_client_name }}">
+      <input type="hidden" name="project_name" value="{{ audit_project_name }}">
+      <div class="report-client-summary">
+        <span class="report-client-label">Report for:</span>
+        <span class="report-client-name">{{ audit_client_name }}</span>
+        {% if audit_project_name %}<span class="report-project-name">{{ audit_project_name }}</span>{% endif %}
+      </div>
+      {% else %}
+      {# No client selected — keep manual inputs as fallback #}
       <div class="report-form-row">
         <div class="form-group">
           <label for="report-client-name">Client / Organisation name</label>
@@ -205,6 +219,7 @@
           <input type="text" id="report-project-name" name="project_name" placeholder="e.g. Website Relaunch 2026">
         </div>
       </div>
+      {% endif %}
       <button type="submit" class="btn btn-secondary" id="report-submit">
         <span class="btn-text">⬇ Download GEO Audit Report (.docx)</span>
         <span class="btn-loading" hidden>Generating report&hellip;</span>

@@ -854,6 +854,37 @@ details[open] .how-to-chevron {
   border-radius: 20px;
 }
 
+/* ── Report client summary (replaces manual name/project inputs) ──────── */
+.report-client-summary {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-mid);
+  border-radius: 6px;
+  margin-bottom: 18px;
+  font-size: 13px;
+}
+.report-client-label {
+  color: var(--color-muted);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.report-client-name {
+  font-weight: 700;
+  color: var(--color-ink);
+}
+.report-project-name {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.report-project-name::before {
+  content: '·';
+  margin-right: 6px;
+}
+
 /* Responsive */
 @media (max-width: 600px) {
   .form-row { grid-template-columns: 1fr; }
