@@ -154,6 +154,20 @@ document.querySelectorAll('#client-select').forEach((select) => {
       brandQueryField.value = name;
     }
 
+    // AI Visibility: fill competitor fields from client profile
+    if (selected.dataset.competitor1) {
+      const c1 = document.getElementById('competitor_1') || document.querySelector('[name="competitor_1"]');
+      if (c1) c1.value = selected.dataset.competitor1;
+    }
+    if (selected.dataset.competitor2) {
+      const c2 = document.getElementById('competitor_2') || document.querySelector('[name="competitor_2"]');
+      if (c2) c2.value = selected.dataset.competitor2;
+    }
+    if (selected.dataset.competitor3) {
+      const c3 = document.getElementById('competitor_3') || document.querySelector('[name="competitor_3"]');
+      if (c3) c3.value = selected.dataset.competitor3;
+    }
+
     // Content guide page: fill all fields
     const nameField = document.getElementById('client_name');
     if (nameField && name) nameField.value = name;
@@ -367,3 +381,41 @@ document.querySelectorAll('.sortable-table').forEach((table) => {
     }
   });
 }());
+
+// ── Report tab navigation ────────────────────────────────────────────────
+document.querySelectorAll('.report-tab').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    const targetId = this.dataset.tab;
+    // Deactivate all
+    document.querySelectorAll('.report-tab').forEach(function(b) {
+      b.classList.remove('active');
+    });
+    document.querySelectorAll('.report-tab-panel').forEach(function(p) {
+      p.classList.remove('active');
+    });
+    // Activate clicked
+    this.classList.add('active');
+    const panel = document.getElementById(targetId);
+    if (panel) panel.classList.add('active');
+  });
+});
+
+// ── Tab deep-linking ─────────────────────────────────────────────────────
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var targetTab = params.get('tab');
+  if (targetTab) {
+    var btn = document.querySelector('[data-tab="tab-' + targetTab + '"]');
+    if (btn) btn.click();
+  }
+
+  // Update URL on tab change (without page reload)
+  document.querySelectorAll('.report-tab').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var tabId = this.dataset.tab.replace('tab-', '');
+      var url = new URL(window.location.href);
+      url.searchParams.set('tab', tabId);
+      history.replaceState(null, '', url.toString());
+    });
+  });
+})();

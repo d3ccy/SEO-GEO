@@ -433,17 +433,28 @@ def ai_visibility():
             'domain': request.form.get('domain', '').strip(),
             'brand_query': request.form.get('brand_query', '').strip(),
             'location_code': location_code,
+            'competitor_1': request.form.get('competitor_1', '').strip(),
+            'competitor_2': request.form.get('competitor_2', '').strip(),
+            'competitor_3': request.form.get('competitor_3', '').strip(),
         }
         if not Config.DATAFORSEO_LOGIN or not Config.DATAFORSEO_PASSWORD:
             error = 'DataForSEO credentials are not configured.'
         elif form['domain']:
             brand_query = form['brand_query'] or form['domain']
+            competitor_domains = [
+                d for d in [
+                    form.get('competitor_1', ''),
+                    form.get('competitor_2', ''),
+                    form.get('competitor_3', ''),
+                ] if d
+            ]
             try:
                 logger.info("Running AI visibility for domain: %s", form['domain'])
                 result = run_ai_visibility(
                     form['domain'],
                     brand_query=brand_query,
                     location_code=location_code,
+                    competitor_domains=competitor_domains,
                 )
             except Exception as e:
                 logger.exception("AI visibility check failed for '%s': %s", form['domain'], e)
