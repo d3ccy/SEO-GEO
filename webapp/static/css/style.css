@@ -1370,3 +1370,56 @@ details[open] .how-to-chevron {
   text-decoration: none;
 }
 .rec-link:hover { text-decoration: underline; }
+
+/* ── Skip navigation link ─────────────────────────────────────────────────── */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 0;
+  padding: 8px 16px;
+  background: var(--color-orange);
+  color: #fff;
+  font-weight: 600;
+  z-index: 9999;
+  border-radius: 0 0 4px 0;
+}
+.skip-link:focus {
+  top: 0;
+}
+
+/* ── Score benchmark sentence ─────────────────────────────────────────────── */
+.score-benchmark {
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  margin-top: 4px;
+  max-width: 220px;
+  line-height: 1.4;
+}
+
+/* ── Results timestamp ────────────────────────────────────────────────────── */
+.results-header-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.results-timestamp {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  margin: 0;
+}
+.rerun-link {
+  color: var(--color-orange);
+  text-decoration: none;
+  font-size: 0.8rem;
+}
+.rerun-link:hover {
+  text-decoration: underline;
+}
+
+/* ── Competitor chip ──────────────────────────────────────────────────────── */
+.mention-source-chip-competitor {
+  border: 1px solid #f59e0b;
+  color: #92400e;
+  background: #fffbeb;
+}

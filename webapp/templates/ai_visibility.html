@@ -77,7 +77,11 @@
 
   <div class="results-header">
     <h2>AI Visibility for <strong>{{ result.domain }}</strong></h2>
-    <p class="subtitle">Query: &ldquo;{{ result.brand_query }}&rdquo;</p>
+    <div class="results-header-meta">
+      <p class="subtitle">Query: &ldquo;{{ result.brand_query }}&rdquo;</p>
+      <p class="results-timestamp">Checked <time id="results-run-time" datetime="{{ now.isoformat() if now else '' }}">just now</time>
+        &mdash; <a href="#ai-vis-form" class="rerun-link">Re-run audit</a></p>
+    </div>
   </div>
 
   {% if result.errors %}
@@ -113,6 +117,15 @@
       <p class="score-context">
         Mentioned in <strong>{{ result.visibility_score.platforms_mentioned }}</strong>
         of {{ result.visibility_score.platforms_total }} LLM platforms checked
+      </p>
+      <p class="score-benchmark">
+        {% if result.visibility_score.score >= 70 %}
+          Top tier — most UK agency sites score 30–50.
+        {% elif result.visibility_score.score >= 40 %}
+          Above average — sites scoring 70+ are regularly cited for category queries.
+        {% else %}
+          Below average — most UK agency sites score 30–50. Significant opportunity to improve.
+        {% endif %}
       </p>
     </div>
 
@@ -153,8 +166,9 @@
           {% else %}
             {% set is_mentioned = llm_map.get(plat) %}
           {% endif %}
-          <div class="platform-pill platform-pill-{{ slug }} {% if is_mentioned %}platform-pill-ok{% else %}platform-pill-miss{% endif %}">
-            <span class="platform-pill-icon">{% if is_mentioned %}✓{% else %}✗{% endif %}</span>
+          <div class="platform-pill platform-pill-{{ slug }} {% if is_mentioned %}platform-pill-ok{% else %}platform-pill-miss{% endif %}"
+               aria-label="{{ plat }}: {% if is_mentioned %}mentioned{% else %}not mentioned{% endif %}">
+            <span class="platform-pill-icon" aria-hidden="true">{% if is_mentioned %}✓{% else %}✗{% endif %}</span>
             {{ plat }}
           </div>
         {% endfor %}
@@ -185,17 +199,22 @@
   {% endif %}
 
   {# ── Report Tab Navigation ── #}
-  <div class="report-tabs" id="report-tabs">
-    <button class="report-tab active" data-tab="tab-overview">
+  <div class="report-tabs" id="report-tabs" role="tablist" aria-label="AI Visibility report sections">
+    <button class="report-tab active" data-tab="tab-overview"
+            role="tab" aria-selected="true" aria-controls="tab-overview" id="tab-btn-overview">
       Overview
       {% if result.mentions %}
         <span class="tab-count">{{ result.mentions | length }}</span>
       {% endif %}
     </button>
-    <button class="report-tab" data-tab="tab-competitors">Competitor</button>
-    <button class="report-tab" data-tab="tab-citations">Citations</button>
-    <button class="report-tab" data-tab="tab-responses">LLM Responses</button>
-    <button class="report-tab" data-tab="tab-recommendations">
+    <button class="report-tab" data-tab="tab-competitors"
+            role="tab" aria-selected="false" aria-controls="tab-competitors" id="tab-btn-competitors" tabindex="-1">Competitor</button>
+    <button class="report-tab" data-tab="tab-citations"
+            role="tab" aria-selected="false" aria-controls="tab-citations" id="tab-btn-citations" tabindex="-1">Citations</button>
+    <button class="report-tab" data-tab="tab-responses"
+            role="tab" aria-selected="false" aria-controls="tab-responses" id="tab-btn-responses" tabindex="-1">LLM Responses</button>
+    <button class="report-tab" data-tab="tab-recommendations"
+            role="tab" aria-selected="false" aria-controls="tab-recommendations" id="tab-btn-recommendations" tabindex="-1">
       Recommendations
       {% if result.recommendations %}
         <span class="tab-count">{{ result.recommendations | length }}</span>
@@ -204,7 +223,7 @@
   </div>
 
   {# ── Tab 1: Overview (LLM Mentions + Google AI Overview) ── #}
-  <div class="report-tab-panel active" id="tab-overview">
+  <div class="report-tab-panel active" id="tab-overview" role="tabpanel" aria-labelledby="tab-btn-overview" tabindex="0">
     <div class="section-inner">
       {% if result.mentions is none %}
         <p class="empty-state">LLM Mentions data not available — requires AI Optimization API access.</p>
@@ -216,7 +235,7 @@
           <span class="section-meta">{{ result.mentions | length }} questions where your domain is cited as a source</span>
         </h3>
         <div class="mention-list">
-          {% for m in result.mentions %}
+          {% for m in result.mentions | sort(attribute='ai_search_volume', reverse=True) %}
           <div class="mention-card mention-card-{{ m.platform }}">
             <div class="mention-card-header">
               <span class="mention-question-text">{{ m.question }}</span>
@@ -234,7 +253,11 @@
             <p class="mention-sources">
               <span class="mention-sources-label">Also cited:</span>
               {% for d in m.source_domains %}
-              <span class="mention-source-chip{% if d in result.domain %} mention-source-chip-you{% endif %}">{{ d }}</span>
+                {% set is_you = d in result.domain %}
+                {% set competitor_domains = [form.get('competitor_1',''), form.get('competitor_2',''), form.get('competitor_3','')] %}
+                {% set is_competitor = d in competitor_domains %}
+                <span class="mention-source-chip{% if is_you %} mention-source-chip-you{% elif is_competitor %} mention-source-chip-competitor{% endif %}"
+                      title="{% if is_you %}Your domain{% elif is_competitor %}Competitor{% else %}Co-cited source{% endif %}">{{ d }}</span>
               {% endfor %}
             </p>
             {% endif %}
@@ -276,7 +299,7 @@
   </div>
 
   {# ── Tab 2: Competitor ── #}
-  <div class="report-tab-panel" id="tab-competitors">
+  <div class="report-tab-panel" id="tab-competitors" role="tabpanel" aria-labelledby="tab-btn-competitors" tabindex="0">
     <div class="section-inner">
       {% if result.competitor_comparison is none %}
         <div class="empty-state-box">
@@ -331,7 +354,7 @@
   </div>
 
   {# ── Tab 3: Citations ── #}
-  <div class="report-tab-panel" id="tab-citations">
+  <div class="report-tab-panel" id="tab-citations" role="tabpanel" aria-labelledby="tab-btn-citations" tabindex="0">
     <div class="section-inner">
       {% if result.top_domains is none %}
         <p class="empty-state">Citation data not available — requires AI Optimization API access.</p>
@@ -374,7 +397,7 @@
   </div>
 
   {# ── Tab 4: LLM Responses ── #}
-  <div class="report-tab-panel" id="tab-responses">
+  <div class="report-tab-panel" id="tab-responses" role="tabpanel" aria-labelledby="tab-btn-responses" tabindex="0">
     <div class="section-inner">
       <h3 class="section-heading">
         LLM responses to: &ldquo;{{ result.brand_query }}&rdquo;
@@ -449,7 +472,7 @@
   </div>
 
   {# ── Tab 5: Recommendations ── #}
-  <div class="report-tab-panel" id="tab-recommendations">
+  <div class="report-tab-panel" id="tab-recommendations" role="tabpanel" aria-labelledby="tab-btn-recommendations" tabindex="0">
     <div class="section-inner">
       {% if not result.recommendations %}
         <p class="empty-state">No recommendations generated — run a full check with all API data available.</p>

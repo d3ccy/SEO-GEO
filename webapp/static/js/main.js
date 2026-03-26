@@ -389,12 +389,16 @@ document.querySelectorAll('.report-tab').forEach(function(btn) {
     // Deactivate all
     document.querySelectorAll('.report-tab').forEach(function(b) {
       b.classList.remove('active');
+      b.setAttribute('aria-selected', 'false');
+      b.setAttribute('tabindex', '-1');
     });
     document.querySelectorAll('.report-tab-panel').forEach(function(p) {
       p.classList.remove('active');
     });
     // Activate clicked
     this.classList.add('active');
+    this.setAttribute('aria-selected', 'true');
+    this.setAttribute('tabindex', '0');
     const panel = document.getElementById(targetId);
     if (panel) panel.classList.add('active');
   });
@@ -419,3 +423,25 @@ document.querySelectorAll('.report-tab').forEach(function(btn) {
     });
   });
 })();
+
+// ── Score gauge animation ────────────────────────────────────────────────────
+// The arc is rendered server-side at its final stroke-dashoffset value,
+// which means the CSS transition has no state change to animate.
+// We reset it to the "empty" position and let the transition fire.
+(function () {
+  const arcFill = document.querySelector('.score-arc-fill');
+  if (!arcFill) return;
+  const arrLen = parseFloat(arcFill.getAttribute('stroke-dasharray') || '157');
+  // Store the target offset that was rendered server-side
+  const targetOffset = parseFloat(arcFill.getAttribute('stroke-dashoffset') || String(arrLen));
+  // Start at fully empty (offset = array length = no arc visible)
+  arcFill.style.transition = 'none';
+  arcFill.setAttribute('stroke-dashoffset', String(arrLen));
+  // On next paint, re-enable transition and set target — triggers animation
+  requestAnimationFrame(function () {
+    requestAnimationFrame(function () {
+      arcFill.style.transition = '';
+      arcFill.setAttribute('stroke-dashoffset', String(targetOffset));
+    });
+  });
+}());

@@ -57,7 +57,7 @@ limiter = Limiter(
     get_remote_address,
     app=app,
     default_limits=["120 per minute"],
-    storage_uri="memory://",
+    storage_uri=os.environ.get('REDIS_URL', 'memory://'),
 )
 
 db.init_app(app)

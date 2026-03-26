@@ -21,7 +21,7 @@ LOCATION_OPTIONS = [
 
 def _clean_domain(domain: str) -> str:
     """Strip protocol and trailing slash; remove www prefix."""
-    d = domain.replace('https://', '').replace('http://', '')
+    d = re.sub(r'^https?://', '', domain, flags=re.IGNORECASE)
     if d.startswith('www.'):
         d = d[4:]
     return d.rstrip('/')
@@ -49,13 +49,13 @@ def _domain_mentioned(text: str, clean_domain: str, brand_query: str = '') -> bo
     # 2. Name-part only (e.g. "numiko" from "numiko.com")
     if '.' in clean_domain:
         name_only = clean_domain.rsplit('.', 1)[0]
-        if len(name_only) >= 4 and name_only.lower() in text_lower:
+        if len(name_only) >= 4 and re.search(r'\b' + re.escape(name_only.lower()) + r'\b', text_lower):
             return True
 
     # 3. First word of brand_query (e.g. "Numiko" from "Numiko digital agency")
     if brand_query:
         first_word = brand_query.strip().split()[0]
-        if len(first_word) >= 4 and first_word.lower() in text_lower:
+        if len(first_word) >= 4 and re.search(r'\b' + re.escape(first_word.lower()) + r'\b', text_lower):
             return True
 
     return False
@@ -96,11 +96,25 @@ _DIRECTORY_DOMAINS = {
 def _classify_domain_type(domain: str) -> str:
     """Return a source type label for a domain: UGC, Authority, Directory, or Editorial."""
     d = domain.lower()
-    if any(u in d for u in _UGC_DOMAINS):
+    parts = set(d.split('.'))
+    # Check subdomain prefixes for UGC markers
+    ugc_prefixes = {'forums', 'community', 'reddit', 'quora', 'stackoverflow',
+                    'stackexchange', 'tripadvisor', 'trustpilot', 'yelp',
+                    'mumsnet', 'netmums'}
+    ugc_domains = {'reddit.com', 'quora.com', 'stackoverflow.com', 'stackexchange.com',
+                   'tripadvisor.co.uk', 'tripadvisor.com', 'trustpilot.com', 'yelp.com',
+                   'mumsnet.com', 'netmums.com'}
+    if d in ugc_domains or any(p in ugc_prefixes for p in d.split('.')):
         return 'UGC'
-    if any(a in d for a in _AUTHORITY_DOMAINS):
+    authority_tlds = {'gov.uk', 'gov', 'nhs.uk', 'ac.uk'}
+    authority_domains = {'wikipedia.org', 'w3.org', 'bbc.co.uk', 'bbc.com',
+                         'ico.org.uk', 'nominet.uk', 'ofcom.org.uk'}
+    if d in authority_domains or any(d.endswith('.' + a) or d == a for a in authority_tlds):
         return 'Authority'
-    if any(di in d for di in _DIRECTORY_DOMAINS):
+    if any(d == di or d.endswith('.' + di) for di in {
+        'clutch.co', 'g2.com', 'capterra.com', 'whatcms.org', 'builtwith.com',
+        'crunchbase.com', 'companieshouse.gov.uk'
+    }):
         return 'Directory'
     return 'Editorial'
 
@@ -117,8 +131,8 @@ def _classify_sentiment(text: str, domain: str, brand_query: str = '') -> str:
     positive_words = [
         'excellent', 'outstanding', 'highly recommend', 'award-winning',
         'trusted', 'leading', 'expertise', 'specialist', 'renowned',
-        'well-regarded', 'strong reputation', 'quality', 'impressive',
-        'best', 'top', 'great', 'positive', 'effective', 'successful',
+        'well-regarded', 'strong reputation', 'impressive',
+        'highly rated', 'best in class', 'highly regarded',
     ]
     negative_words = [
         'poor', 'disappointing', 'complaint', 'issue', 'problem', 'bad',
@@ -138,7 +152,6 @@ def _calculate_visibility_score(
     mentions: list | None,
     llm_responses: list | None,
     chatgpt: dict | None,
-    aggregated_metrics: list | None,
 ) -> dict:
     """
     Calculate a 0–100 AI visibility score from already-collected data.
@@ -147,9 +160,8 @@ def _calculate_visibility_score(
     Scoring formula:
       mention_score   = min(len(mentions), 20) / 20 * 40   → 0–40 pts
       llm_score       = (platforms_mentioned / 5) * 30      → 0–30 pts
-      citation_score  = 20 if any mentions else 0            → 0–20 pts
-      chatgpt_score   = 10 if chatgpt domain_mentioned else 0 → 0–10 pts
-      Total: 0–100
+      citation_score  = 30 if any mentions else 0            → 0–30 pts
+      Total: 0–90 (mention_score + llm_score + citation_score)
 
     Returns dict with keys: score (int), grade (str), colour (str),
     platforms_mentioned (int), platforms_total (int).
@@ -166,11 +178,9 @@ def _calculate_visibility_score(
         platforms_total += 1
     llm_score = (platforms_mentioned / max(platforms_total, 1)) * 30
 
-    citation_score = 20 if mention_count > 0 else 0
+    citation_score = 30 if mention_count > 0 else 0
 
-    chatgpt_score = 10 if (chatgpt and chatgpt.get('domain_mentioned')) else 0
-
-    total = int(mention_score + llm_score + citation_score + chatgpt_score)
+    total = int(mention_score + llm_score + citation_score)
     total = max(0, min(100, total))
 
     if total >= 70:
@@ -270,8 +280,9 @@ def _generate_recommendations(result: dict) -> list[dict]:
                 'link_text': None, 'link_route': None,
             })
 
-    # 6. Good visibility — positive reinforcement
-    if vs.get('score', 0) >= 70:
+    # 6. Good visibility — positive reinforcement (only if no high-priority gaps)
+    has_high_priority = any(r['priority'] == 'high' for r in recs)
+    if vs.get('score', 0) >= 70 and not has_high_priority:
         recs.append({
             'priority': 'low',
             'title': 'Strong AI visibility — monitor monthly',
@@ -355,7 +366,7 @@ def run_ai_visibility(domain: str, brand_query: str, location_code: int = 2826,
             ]
         else:
             result['aggregated_metrics'] = []
-    except (RuntimeError, KeyError, TypeError, ConnectionError) as exc:
+    except Exception as exc:
         logger.warning('Aggregated Metrics fetch failed: %s', exc)
         result['errors'].append(f'Aggregated Metrics: {exc}')
 
@@ -384,7 +395,7 @@ def run_ai_visibility(domain: str, brand_query: str, location_code: int = 2826,
             ]
         else:
             result['top_domains'] = []
-    except (RuntimeError, KeyError, TypeError, ConnectionError) as exc:
+    except Exception as exc:
         logger.warning('Top Domains fetch failed: %s', exc)
         result['errors'].append(f'Top Domains: {exc}')
 
@@ -396,7 +407,7 @@ def run_ai_visibility(domain: str, brand_query: str, location_code: int = 2826,
             targets = [{'domain': clean_domain, 'search_filter': 'include'}]
             for cd in competitor_domains[:3]:
                 cd_clean = _clean_domain(cd)
-                if cd_clean:
+                if cd_clean and re.match(r'^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$', cd_clean):
                     targets.append({'domain': cd_clean, 'search_filter': 'include'})
 
             resp = api_post('ai_optimization/llm_mentions/cross_aggregated_metrics/live', [{
@@ -424,7 +435,7 @@ def run_ai_visibility(domain: str, brand_query: str, location_code: int = 2826,
                 result['competitor_comparison'] = comp_data
             else:
                 result['competitor_comparison'] = []
-        except (RuntimeError, KeyError, TypeError, ConnectionError) as exc:
+        except Exception as exc:
             logger.warning('Competitor Cross-Comparison fetch failed: %s', exc)
             result['errors'].append(f'Competitor Comparison: {exc}')
 
@@ -455,7 +466,7 @@ def run_ai_visibility(domain: str, brand_query: str, location_code: int = 2826,
             ]
         else:
             result['mentions'] = []
-    except (RuntimeError, KeyError, TypeError, ConnectionError) as exc:
+    except Exception as exc:
         logger.warning('LLM Mentions fetch failed: %s', exc)
         result['errors'].append(f'LLM Mentions: {exc}')
 
@@ -499,7 +510,7 @@ def run_ai_visibility(domain: str, brand_query: str, location_code: int = 2826,
                     break
         if result['ai_overview'] is None:
             result['ai_overview'] = {'text': None, 'references': [], 'domain_mentioned': False}
-    except (RuntimeError, KeyError, TypeError, ConnectionError) as exc:
+    except Exception as exc:
         logger.warning('SERP AI Overview fetch failed: %s', exc)
         result['errors'].append(f'Google AI Overview: {exc}')
         if result['ai_overview'] is None:
@@ -545,7 +556,7 @@ def run_ai_visibility(domain: str, brand_query: str, location_code: int = 2826,
                     brand_query,
                 ),
             }
-    except (RuntimeError, KeyError, TypeError, ConnectionError) as exc:
+    except Exception as exc:
         logger.warning('ChatGPT Search fetch failed: %s', exc)
         result['errors'].append(f'ChatGPT Search: {exc}')
 
@@ -588,7 +599,7 @@ def run_ai_visibility(domain: str, brand_query: str, location_code: int = 2826,
                         ),
                         'sentiment': _classify_sentiment(response_text, clean_domain, brand_query),
                     })
-        except (RuntimeError, KeyError, TypeError, ConnectionError) as exc:
+        except Exception as exc:
             logger.warning('%s LLM response fetch failed: %s', platform_name, exc)
             result['errors'].append(f'{platform_name}: {exc}')
 
@@ -600,7 +611,6 @@ def run_ai_visibility(domain: str, brand_query: str, location_code: int = 2826,
         mentions=result.get('mentions'),
         llm_responses=result.get('llm_responses'),
         chatgpt=result.get('chatgpt'),
-        aggregated_metrics=result.get('aggregated_metrics'),
     )
 
     result['recommendations'] = _generate_recommendations(result)
